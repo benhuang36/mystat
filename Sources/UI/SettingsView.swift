@@ -15,12 +15,17 @@ enum SettingsSelection: Hashable {
     case monitor(MonitorType)
 }
 
+class SettingsNavigationManager: ObservableObject {
+    static let shared = SettingsNavigationManager()
+    @Published var selection: SettingsSelection? = .general
+}
+
 struct SettingsView: View {
-    @State private var selection: SettingsSelection? = .general
+    @ObservedObject private var nav = SettingsNavigationManager.shared
     
     var body: some View {
         NavigationSplitView {
-            List(selection: $selection) {
+            List(selection: $nav.selection) {
                 NavigationLink(value: SettingsSelection.general) {
                     Label {
                         Text("General")
@@ -50,7 +55,7 @@ struct SettingsView: View {
             .navigationTitle("MyStat")
             .listStyle(.sidebar)
         } detail: {
-            if let selection = selection {
+            if let selection = nav.selection {
                 switch selection {
                 case .general:
                     GeneralSettingsView()

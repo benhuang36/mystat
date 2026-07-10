@@ -28,6 +28,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     @objc func openSettings() {
+        openSettings(for: nil)
+    }
+    
+    func openSettings(for type: MonitorType?) {
+        if let type = type {
+            SettingsNavigationManager.shared.selection = .monitor(type)
+        } else {
+            SettingsNavigationManager.shared.selection = .general
+        }
+        
         NotificationCenter.default.post(name: NSNotification.Name("CloseAllPopovers"), object: nil)
         
         if settingsWindow == nil {

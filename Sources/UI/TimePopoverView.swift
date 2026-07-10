@@ -29,7 +29,7 @@ struct TimePopoverView: View {
                         Spacer()
                         
                         Button(action: {
-                            AppDelegate.shared.openSettings()
+                            AppDelegate.shared.openSettings(for: .time)
                         }) {
                             Image(systemName: "gearshape.fill")
                                 .font(.system(size: 14))

@@ -21,7 +21,7 @@ struct CPUPopoverView: View {
                         Spacer()
                         
                         Button(action: {
-                            AppDelegate.shared.openSettings()
+                            AppDelegate.shared.openSettings(for: .cpu)
                         }) {
                             Image(systemName: "gearshape.fill")
                                 .font(.system(size: 14))

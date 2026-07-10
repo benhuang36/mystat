@@ -18,7 +18,7 @@ struct MemoryPopoverView: View {
                         Spacer()
                         
                         Button(action: {
-                            AppDelegate.shared.openSettings()
+                            AppDelegate.shared.openSettings(for: .memory)
                         }) {
                             Image(systemName: "gearshape.fill")
                                 .font(.system(size: 14))

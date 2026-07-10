@@ -16,7 +16,7 @@ struct NetworkPopoverView: View {
                 Spacer()
                 
                 Button(action: {
-                    AppDelegate.shared.openSettings()
+                    AppDelegate.shared.openSettings(for: .network)
                 }) {
                     Image(systemName: "gearshape.fill")
                         .font(.system(size: 14))
