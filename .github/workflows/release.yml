@@ -1,0 +1,44 @@
+name: Build and Release DMG
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on version tags like v0.1.0
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    permissions:
+      contents: write # Required for creating releases
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Build App
+      run: |
+        xcodebuild -project MyStat.xcodeproj -scheme MyStat -configuration Release build SYMROOT="build" CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=YES CODE_SIGNING_ALLOWED=YES
+
+    - name: Install create-dmg
+      run: brew install create-dmg
+
+    - name: Create DMG
+      run: |
+        cd build/Release
+        create-dmg \
+          --volname "MyStat" \
+          --window-pos 200 120 \
+          --window-size 600 400 \
+          --icon-size 100 \
+          --icon "MyStat.app" 150 190 \
+          --hide-extension "MyStat.app" \
+          --app-drop-link 450 190 \
+          "MyStat.dmg" \
+          "MyStat.app"
+
+    - name: Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: build/Release/MyStat.dmg
+        generate_release_notes: true
