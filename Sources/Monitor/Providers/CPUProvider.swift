@@ -12,7 +12,7 @@ class CPUProvider {
         sysctl(UnsafeMutablePointer<Int32>(mutating: mibKeys), 2, &numCPUs, &sizeOfNumCPUs, nil, 0)
     }
     
-    func getCPUUsage() -> Double {
+    func getCPUUsage() -> (total: Double, perCore: [Double]) {
         var numCPUInfo: mach_msg_type_number_t = 0
         var cpuInfo: processor_info_array_t?
         
@@ -23,28 +23,33 @@ class CPUProvider {
             cpuInfoLock.lock()
             
             var totalUsage = 0.0
+            var perCoreUsages = [Double](repeating: 0.0, count: Int(numCPUs))
             
             if let prevInfo = previousCPUInfo, let curInfo = cpuInfo {
-                var inUse: Int32 = 0
-                var total: Int32 = 0
+                var inUseTotal: Int32 = 0
+                var totalAll: Int32 = 0
                 
-                for i in 0 ..< Int32(numCPUs) {
-                    let inUseTick = curInfo[Int(CPU_STATE_MAX * i + CPU_STATE_USER)]
-                        - prevInfo[Int(CPU_STATE_MAX * i + CPU_STATE_USER)]
-                        + curInfo[Int(CPU_STATE_MAX * i + CPU_STATE_SYSTEM)]
-                        - prevInfo[Int(CPU_STATE_MAX * i + CPU_STATE_SYSTEM)]
-                        + curInfo[Int(CPU_STATE_MAX * i + CPU_STATE_NICE)]
-                        - prevInfo[Int(CPU_STATE_MAX * i + CPU_STATE_NICE)]
+                for i in 0 ..< Int(numCPUs) {
+                    let inUseTick = curInfo[Int(CPU_STATE_MAX) * i + Int(CPU_STATE_USER)]
+                        - prevInfo[Int(CPU_STATE_MAX) * i + Int(CPU_STATE_USER)]
+                        + curInfo[Int(CPU_STATE_MAX) * i + Int(CPU_STATE_SYSTEM)]
+                        - prevInfo[Int(CPU_STATE_MAX) * i + Int(CPU_STATE_SYSTEM)]
+                        + curInfo[Int(CPU_STATE_MAX) * i + Int(CPU_STATE_NICE)]
+                        - prevInfo[Int(CPU_STATE_MAX) * i + Int(CPU_STATE_NICE)]
                     
-                    let totalTick = inUseTick + curInfo[Int(CPU_STATE_MAX * i + CPU_STATE_IDLE)]
-                        - prevInfo[Int(CPU_STATE_MAX * i + CPU_STATE_IDLE)]
+                    let totalTick = inUseTick + curInfo[Int(CPU_STATE_MAX) * i + Int(CPU_STATE_IDLE)]
+                        - prevInfo[Int(CPU_STATE_MAX) * i + Int(CPU_STATE_IDLE)]
                     
-                    inUse += inUseTick
-                    total += totalTick
+                    inUseTotal += inUseTick
+                    totalAll += totalTick
+                    
+                    if totalTick > 0 {
+                        perCoreUsages[i] = (Double(inUseTick) / Double(totalTick)) * 100.0
+                    }
                 }
                 
-                if total > 0 {
-                    totalUsage = Double(inUse) / Double(total)
+                if totalAll > 0 {
+                    totalUsage = (Double(inUseTotal) / Double(totalAll)) * 100.0
                 }
             }
             
@@ -58,9 +63,9 @@ class CPUProvider {
             
             cpuInfoLock.unlock()
             
-            return totalUsage * 100.0
+            return (totalUsage, perCoreUsages)
         } else {
-            return 0.0
+            return (0.0, [Double](repeating: 0.0, count: Int(numCPUs)))
         }
     }
 }

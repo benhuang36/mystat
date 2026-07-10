@@ -5,7 +5,7 @@ struct VisualEffectView: NSViewRepresentable {
         let view = NSVisualEffectView()
         view.blendingMode = .behindWindow
         view.state = .active
-        view.material = .popover
+        view.material = .hudWindow
         return view
     }
     

@@ -13,6 +13,8 @@ class MenuBarManager {
         controllers[.disk] = StatusItemController(type: .disk)
         controllers[.network] = StatusItemController(type: .network)
         controllers[.battery] = StatusItemController(type: .battery)
+        controllers[.time] = StatusItemController(type: .time)
+        controllers[.display] = StatusItemController(type: .display)
         
         setupObservers()
         refreshAll()
@@ -32,6 +34,8 @@ class MenuBarManager {
         controllers[.disk]?.setVisible(UserDefaults.standard.bool(forKey: "showDisk"))
         controllers[.network]?.setVisible(UserDefaults.standard.bool(forKey: "showNetwork"))
         controllers[.battery]?.setVisible(UserDefaults.standard.bool(forKey: "showBattery"))
+        controllers[.time]?.setVisible(UserDefaults.standard.bool(forKey: "showTime"))
+        controllers[.display]?.setVisible(UserDefaults.standard.bool(forKey: "showDisplay"))
     }
     
     private func updateStatusItem(for type: MonitorType, show: Bool) {

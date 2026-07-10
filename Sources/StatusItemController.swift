@@ -2,32 +2,59 @@ import Cocoa
 import SwiftUI
 import Combine
 
-class StatusItemController {
+class CustomPopoverPanel: NSPanel {
+    init(contentView: NSView) {
+        super.init(contentRect: NSRect(x: 0, y: 0, width: contentView.bounds.width, height: contentView.bounds.height),
+                   styleMask: [.nonactivatingPanel, .fullSizeContentView],
+                   backing: .buffered,
+                   defer: false)
+        self.isFloatingPanel = true
+        self.hasShadow = true
+        self.backgroundColor = .clear
+        self.isOpaque = false
+        self.level = .popUpMenu
+        self.titleVisibility = .hidden
+        self.titlebarAppearsTransparent = true
+        
+        let visualEffect = NSVisualEffectView()
+        visualEffect.material = .popover
+        visualEffect.state = .active
+        visualEffect.blendingMode = .behindWindow
+        visualEffect.wantsLayer = true
+        visualEffect.layer?.cornerRadius = 12
+        visualEffect.layer?.masksToBounds = true
+        
+        contentView.translatesAutoresizingMaskIntoConstraints = false
+        visualEffect.addSubview(contentView)
+        NSLayoutConstraint.activate([
+            contentView.topAnchor.constraint(equalTo: visualEffect.topAnchor),
+            contentView.bottomAnchor.constraint(equalTo: visualEffect.bottomAnchor),
+            contentView.leadingAnchor.constraint(equalTo: visualEffect.leadingAnchor),
+            contentView.trailingAnchor.constraint(equalTo: visualEffect.trailingAnchor)
+        ])
+        
+        self.contentView = visualEffect
+    }
+    
+    override var canBecomeKey: Bool { return true }
+    override var canBecomeMain: Bool { return true }
+}
+
+class StatusItemController: NSObject {
     let type: MonitorType
     private var statusItem: NSStatusItem?
-    private var popover: NSPopover
+    private var panel: CustomPopoverPanel?
     private var eventMonitor: Any?
+    private var globalEventMonitor: Any?
+    
+    private var classicMenuBuilder: DisplayMenuBuilder?
+    private var isFadingOut = false
     
     private var cancellables = Set<AnyCancellable>()
     
     init(type: MonitorType) {
         self.type = type
-        self.popover = NSPopover()
-        self.popover.behavior = .transient
-        
-        switch type {
-        case .cpu:
-            popover.contentViewController = NSHostingController(rootView: CPUPopoverView())
-        case .memory:
-            popover.contentViewController = NSHostingController(rootView: MemoryPopoverView())
-        case .disk:
-            popover.contentViewController = NSHostingController(rootView: DiskPopoverView())
-        case .network:
-            popover.contentViewController = NSHostingController(rootView: NetworkPopoverView())
-        case .battery:
-            popover.contentViewController = NSHostingController(rootView: BatteryPopoverView())
-        }
-        
+        super.init()
         createStatusItem()
         setupSubscriptions()
     }
@@ -42,7 +69,6 @@ class StatusItemController {
         }
         
         updateButtonUI()
-        setupEventMonitor()
     }
     
     private func setupSubscriptions() {
@@ -64,12 +90,20 @@ class StatusItemController {
                 .sink { [weak self] _ in self?.updateButtonUI() }
                 .store(in: &cancellables)
         case .network:
-            SystemMonitor.shared.$networkUploadSpeed
+            SystemMonitor.shared.$networkDownloadSpeed
                 .receive(on: DispatchQueue.main)
                 .sink { [weak self] _ in self?.updateButtonUI() }
                 .store(in: &cancellables)
         case .battery:
             SystemMonitor.shared.$batteryStats
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] _ in self?.updateButtonUI() }
+                .store(in: &cancellables)
+        case .time:
+            // Handled via clock ticks or other
+            break
+        case .display:
+            DisplayManager.shared.$displays
                 .receive(on: DispatchQueue.main)
                 .sink { [weak self] _ in self?.updateButtonUI() }
                 .store(in: &cancellables)
@@ -80,10 +114,44 @@ class StatusItemController {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.updateButtonUI() }
             .store(in: &cancellables)
+            
+        // Mutual exclusion: Close this popover if another one is opened
+        NotificationCenter.default.publisher(for: NSNotification.Name("CloseAllPopovers"))
+            .sink { [weak self] notification in
+                guard let self = self else { return }
+                if let sender = notification.object as? StatusItemController, sender === self { return }
+                if self.panel != nil {
+                    self.closePopover(nil)
+                }
+            }
+            .store(in: &cancellables)
     }
     
-    private func updateButtonUI() {
+    @objc private func updateButtonUI() {
         guard let button = statusItem?.button else { return }
+        
+        if type == .display {
+            let uiStyle = UserDefaults.standard.string(forKey: "displayUIStyle") ?? "Glass"
+            if uiStyle == "Classic" {
+                if classicMenuBuilder == nil {
+                    classicMenuBuilder = DisplayMenuBuilder()
+                }
+                statusItem?.menu = classicMenuBuilder?.menu
+                button.action = nil
+            } else {
+                classicMenuBuilder = nil
+                statusItem?.menu = nil
+                button.action = #selector(togglePopover(_:))
+                button.target = self
+            }
+        }
+        
+        if type == .time {
+            button.image = nil
+            button.attributedTitle = NSAttributedString(string: "")
+            button.title = TimeFormatHelper.shared.generateTimeString()
+            return
+        }
         
         let styleRaw = UserDefaults.standard.string(forKey: "\(type.rawValue.lowercased())DisplayStyle") ?? "Icon Only"
         
@@ -110,17 +178,14 @@ class StatusItemController {
                     return baseImage
                 }
                 
-                // Composite bolt over battery
                 guard let boltImage = NSImage(systemSymbolName: "bolt.fill", accessibilityDescription: nil) else {
                     return baseImage
                 }
                 
-                // Expand canvas height by 30% to fit the protruding bolt
                 let finalSize = NSSize(width: baseImage.size.width, height: baseImage.size.height * 1.3)
                 let newImage = NSImage(size: finalSize)
                 newImage.lockFocus()
                 
-                // Draw base image vertically centered
                 let baseRect = NSRect(
                     x: 0,
                     y: (finalSize.height - baseImage.size.height) / 2.0,
@@ -129,12 +194,10 @@ class StatusItemController {
                 )
                 baseImage.draw(in: baseRect)
                 
-                // Scale bolt to be 1.2x the height of the battery
                 let boltHeight = baseImage.size.height * 1.2
                 let scale = boltHeight / boltImage.size.height
                 let boltWidth = boltImage.size.width * scale
                 
-                // Center bolt, slightly offset to the left due to the battery terminal
                 let centerX = (finalSize.width / 2.0) - 1.5
                 let centerY = finalSize.height / 2.0
                 
@@ -194,6 +257,15 @@ class StatusItemController {
                 button.title = ""
             case .battery:
                 button.title = String(format: " %.0f%%", SystemMonitor.shared.batteryStats.percentage)
+            case .time:
+                break // Handled above
+            case .display:
+                if let mainDisplay = DisplayManager.shared.displays.first(where: { $0.isMain }) ?? DisplayManager.shared.displays.first,
+                   let mode = mainDisplay.currentMode {
+                    button.title = " \(mode.width)x\(mode.height)"
+                } else {
+                    button.title = " Display"
+                }
             }
         } else {
             // Graphical Modes
@@ -235,6 +307,8 @@ class StatusItemController {
                 value = SystemMonitor.shared.batteryStats.percentage
                 history = []
                 color = SystemMonitor.shared.batteryStats.isCharging ? .systemGreen : .systemYellow
+            case .time, .display:
+                break
             }
             
             if styleRaw == DisplayStyle.history.rawValue {
@@ -295,14 +369,11 @@ class StatusItemController {
             NSStatusBar.system.removeStatusItem(item)
         }
         statusItem = nil
-        if let monitor = eventMonitor {
-            NSEvent.removeMonitor(monitor)
-            eventMonitor = nil
-        }
+        removeEventMonitors()
     }
     
     @objc func togglePopover(_ sender: AnyObject?) {
-        if popover.isShown {
+        if let window = panel, window.isVisible {
             closePopover(sender)
         } else {
             showPopover(sender)
@@ -310,20 +381,115 @@ class StatusItemController {
     }
     
     func showPopover(_ sender: AnyObject?) {
-        if let button = statusItem?.button {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: NSRectEdge.minY)
+        NotificationCenter.default.post(name: NSNotification.Name("CloseAllPopovers"), object: self)
+        
+        if panel == nil {
+            SystemMonitor.shared.activePopoversCount += 1
+            let view: AnyView
+            switch type {
+            case .cpu: view = AnyView(RootEnvironmentView { CPUPopoverView() })
+            case .memory: view = AnyView(RootEnvironmentView { MemoryPopoverView() })
+            case .disk: view = AnyView(RootEnvironmentView { DiskPopoverView() })
+            case .network: view = AnyView(RootEnvironmentView { NetworkPopoverView() })
+            case .battery: view = AnyView(RootEnvironmentView { BatteryPopoverView() })
+            case .time: view = AnyView(RootEnvironmentView { TimePopoverView() })
+            case .display: view = AnyView(RootEnvironmentView { DisplayPopoverView() })
+            }
+            
+            let hostingController = NSHostingController(rootView: view)
+            hostingController.view.setFrameSize(hostingController.view.fittingSize)
+            panel = CustomPopoverPanel(contentView: hostingController.view)
+        }
+        
+        if let button = statusItem?.button, let window = panel {
+            let buttonFrame = button.window?.convertToScreen(button.frame) ?? .zero
+            let xPos = buttonFrame.midX - window.frame.width / 2
+            let yPos = buttonFrame.minY - window.frame.height - 8
+            
+            window.setFrameOrigin(NSPoint(x: xPos, y: yPos))
+            
+            window.alphaValue = 0.0
+            window.makeKeyAndOrderFront(nil)
+            
+            DispatchQueue.main.async {
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = 0.2
+                    context.allowsImplicitAnimation = true
+                    window.animator().alphaValue = 1.0
+                }
+            }
+            
+            setupEventMonitors()
         }
     }
     
     func closePopover(_ sender: AnyObject?) {
-        popover.performClose(sender)
+        guard let window = panel else { return }
+        guard window.isVisible else { return } // Already closed
+        
+        if !isFadingOut {
+            isFadingOut = true
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.2
+                context.allowsImplicitAnimation = true
+                window.animator().alphaValue = 0.0
+            }, completionHandler: { [weak self] in
+                window.orderOut(nil)
+                // Keep the panel alive for future use to avoid rendering delay
+                self?.isFadingOut = false
+                SystemMonitor.shared.activePopoversCount = max(0, SystemMonitor.shared.activePopoversCount - 1)
+                self?.removeEventMonitors()
+            })
+        }
     }
     
-    private func setupEventMonitor() {
-        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
-            if self?.popover.isShown == true {
-                self?.closePopover(event)
-            }
+    private func setupEventMonitors() {
+        globalEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+            self?.closePopover(event)
         }
+        
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+            guard let self = self, let panel = self.panel else { return event }
+            
+            if let button = self.statusItem?.button, let buttonWindow = button.window {
+                let pointInButtonWindow = event.locationInWindow
+                let viewPoint = button.convert(pointInButtonWindow, from: nil)
+                if button.bounds.contains(viewPoint) {
+                    return event
+                }
+            }
+            
+            let pointInPanel = event.locationInWindow
+            if !panel.contentView!.bounds.contains(pointInPanel) {
+                self.closePopover(event)
+            }
+            
+            return event
+        }
+    }
+    
+    private func removeEventMonitors() {
+        if let monitor = globalEventMonitor {
+            NSEvent.removeMonitor(monitor)
+            globalEventMonitor = nil
+        }
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
+            eventMonitor = nil
+        }
+    }
+}
+
+struct RootEnvironmentView<Content: View>: View {
+    @AppStorage("appLanguage") private var appLanguage = "system"
+    let content: Content
+    
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+    
+    var body: some View {
+        content
+            .environment(\.locale, appLanguage == "system" ? .current : Locale(identifier: appLanguage))
     }
 }

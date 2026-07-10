@@ -3,13 +3,11 @@ import SwiftUI
 @main
 struct MyStatApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @AppStorage("appLanguage") private var appLanguage = "system"
     
     var body: some Scene {
-        Window("MyStat Settings", id: "settings") {
-            SettingsView()
-                .onAppear {
-                    NSApp.activate(ignoringOtherApps: true)
-                }
+        Settings {
+            EmptyView()
         }
     }
 }

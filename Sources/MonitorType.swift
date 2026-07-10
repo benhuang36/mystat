@@ -6,6 +6,8 @@ enum MonitorType: String, CaseIterable {
     case disk = "Disk"
     case network = "Network"
     case battery = "Battery"
+    case time = "Time"
+    case display = "Display"
     
     var sfSymbolName: String {
         switch self {
@@ -14,6 +16,8 @@ enum MonitorType: String, CaseIterable {
         case .disk: return "internaldrive"
         case .network: return "network"
         case .battery: return "battery.100"
+        case .time: return "clock"
+        case .display: return "display"
         }
     }
 }

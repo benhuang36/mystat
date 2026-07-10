@@ -3,119 +3,153 @@ import Charts
 
 struct DiskPopoverView: View {
     @ObservedObject private var monitor = SystemMonitor.shared
-    @Environment(\.openWindow) private var openWindow
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // Header
-            HStack {
-                Text("Disk")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                Spacer()
-                
-                Button(action: {
-                    openWindow(id: "settings")
-                    NSApp.activate(ignoringOtherApps: true)
-                }) {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
+        VStack(spacing: 12) {
+            // Header & Disk Card
+            GlassCard {
+                VStack(spacing: 12) {
+                    HStack {
+                        Label("Disk", systemImage: "internaldrive")
+                            .font(.headline)
+                            .foregroundColor(.cyan)
+                            .symbolRenderingMode(.hierarchical)
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            AppDelegate.shared.openSettings()
+                        }) {
+                            Image(systemName: "gearshape.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                                .frame(width: 28, height: 28)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.trailing, 8)
+                        
+                        Text(monitor.diskFreeString)
+                            .font(.title3)
+                            .bold()
+                            .monospacedDigit()
+                    }
+                    
+                    HStack(spacing: 15) {
+                        let diskVal = monitor.diskUsageRatio * 100
+                        StatRing(value: diskVal, displayValue: "\(Int(diskVal))%", title: "", color: .cyan, lineWidth: 6, valueFont: .system(size: 14, weight: .bold))
+                            .frame(width: 50, height: 50)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Macintosh HD")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text(monitor.diskFreeString)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .monospacedDigit()
+                        }
+                        Spacer()
+                    }
                 }
-                .buttonStyle(.plain)
-                .padding(.trailing, 8)
-                
-                Text(monitor.diskFreeString)
-                    .font(.title3)
-                    .bold()
-                    .monospacedDigit()
             }
             
-            // Macintosh HD
-            HStack(spacing: 12) {
-                let diskVal = monitor.diskUsageRatio * 100
-                StatRing(value: diskVal, displayValue: "\(Int(diskVal))%", title: "", color: .cyan, lineWidth: 5, valueFont: .system(size: 10, weight: .bold))
-                    .frame(width: 40, height: 40)
-                
-                VStack(alignment: .leading) {
-                    Text("Macintosh HD")
-                        .font(.subheadline)
-                    Text(monitor.diskFreeString)
+            // Speeds & Chart Card
+            GlassCard {
+                VStack(spacing: 10) {
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text(formatBytes(monitor.diskReadSpeed) + "/s")
+                                .font(.system(size: 14, weight: .bold))
+                                .monospacedDigit()
+                            HStack(spacing: 4) {
+                                Circle().fill(Color.cyan).frame(width: 6, height: 6)
+                                Text("Read").font(.caption).foregroundColor(.secondary)
+                            }
+                        }
+                        Spacer()
+                        VStack(alignment: .trailing) {
+                            Text(formatBytes(monitor.diskWriteSpeed) + "/s")
+                                .font(.system(size: 14, weight: .bold))
+                                .monospacedDigit()
+                            HStack(spacing: 4) {
+                                Circle().fill(Color.indigo).frame(width: 6, height: 6)
+                                Text("Write").font(.caption).foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    
+                    Chart {
+                        ForEach(Array(zip(monitor.diskReadHistory.indices, monitor.diskReadHistory)), id: \.0) { index, value in
+                            BarMark(
+                                x: .value("Time", index),
+                                y: .value("Read", value)
+                            )
+                            .foregroundStyle(Color.cyan.opacity(0.8))
+                        }
+                        ForEach(Array(zip(monitor.diskWriteHistory.indices, monitor.diskWriteHistory)), id: \.0) { index, value in
+                            BarMark(
+                                x: .value("Time", index),
+                                y: .value("Write", -value)
+                            )
+                            .foregroundStyle(Color.indigo.opacity(0.8))
+                        }
+                    }
+                    .chartXAxis(.hidden)
+                    .chartYAxis(.hidden)
+                    .frame(height: 60)
+                }
+            }
+            
+            // Processes Card
+            GlassCard {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Top Processes", systemImage: "list.dash")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                        .monospacedDigit()
-                }
-            }
-            .padding(.vertical, 5)
-            
-            Divider()
-            
-            // Speeds
-            HStack {
-                VStack(alignment: .leading) {
-                    Text("377 KB/s")
-                        .font(.title3)
-                        .bold()
-                        .monospacedDigit()
-                    HStack {
-                        Circle().fill(Color.cyan).frame(width: 6, height: 6)
-                        Text("Read").font(.caption).foregroundColor(.secondary)
-                    }
-                }
-                Spacer()
-                VStack(alignment: .trailing) {
-                    Text("108 KB/s")
-                        .font(.title3)
-                        .bold()
-                        .monospacedDigit()
-                    HStack {
-                        Circle().fill(Color.indigo).frame(width: 6, height: 6)
-                        Text("Write").font(.caption).foregroundColor(.secondary)
-                    }
-                }
-            }
-            
-            // Mock Activity Chart
-            Chart {
-                ForEach(0..<30, id: \.self) { index in
-                    BarMark(
-                        x: .value("Time", index),
-                        y: .value("Read", Double.random(in: 10...100))
-                    )
-                    .foregroundStyle(Color.cyan)
                     
-                    BarMark(
-                        x: .value("Time", index),
-                        y: .value("Write", Double.random(in: -100...(-10)))
-                    )
-                    .foregroundStyle(Color.indigo)
-                }
-            }
-            .chartXAxis(.hidden)
-            .chartYAxis(.hidden)
-            .frame(height: 80)
-            
-            Divider()
-            
-            Text("PROCESSES")
-                .font(.caption)
-                .foregroundColor(.cyan)
-            
-            VStack(spacing: 4) {
-                // Mock disk processes
-                HStack {
-                    Text("kernel_task").font(.system(size: 11))
-                    Spacer()
-                    Text("8.8M")
-                        .font(.system(size: 11))
-                        .monospacedDigit()
-                }
-                HStack {
-                    Text("mds_stores").font(.system(size: 11))
-                    Spacer()
-                    Text("2.1M")
-                        .font(.system(size: 11))
-                        .monospacedDigit()
+                    VStack(alignment: .leading, spacing: 12) {
+                        // Read
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Top Read")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.cyan)
+                            
+                            ForEach(monitor.topDiskReadProcesses) { process in
+                                HStack {
+                                    Text(process.name)
+                                        .font(.system(size: 11, weight: .medium))
+                                        .lineLimit(1)
+                                        .truncationMode(.tail)
+                                    Spacer()
+                                    Text(process.usage)
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .monospacedDigit()
+                                }
+                            }
+                        }
+                        
+                        CustomDivider()
+                        
+                        // Write
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Top Write")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.indigo)
+                            
+                            ForEach(monitor.topDiskWriteProcesses) { process in
+                                HStack {
+                                    Text(process.name)
+                                        .font(.system(size: 11, weight: .medium))
+                                        .lineLimit(1)
+                                        .truncationMode(.tail)
+                                    Spacer()
+                                    Text(process.usage)
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .monospacedDigit()
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -123,5 +157,18 @@ struct DiskPopoverView: View {
         .frame(width: 320)
         .background(VisualEffectView().ignoresSafeArea())
         .preferredColorScheme(.dark)
+    }
+    
+    private func formatBytes(_ bytes: Double) -> String {
+        let kb = bytes / 1024
+        if kb < 1024 {
+            return String(format: "%.1f KB", kb)
+        }
+        let mb = kb / 1024
+        if mb < 1024 {
+            return String(format: "%.1f MB", mb)
+        }
+        let gb = mb / 1024
+        return String(format: "%.1f GB", gb)
     }
 }

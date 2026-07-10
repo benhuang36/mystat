@@ -1,0 +1,134 @@
+import SwiftUI
+import Combine
+
+struct TimePopoverView: View {
+    @State private var date = Date()
+    @State private var calendarSelectedDate = Date()
+    @State private var timer: AnyCancellable?
+    @ObservedObject private var clockManager = WorldClockManager.shared
+    @State private var contentHeight: CGFloat
+    
+    init() {
+        let baseHeight: CGFloat = 420
+        let clocksCount = WorldClockManager.shared.clocks.count
+        let initialH = baseHeight + CGFloat(clocksCount * 55)
+        _contentHeight = State(initialValue: min(initialH, 850))
+    }
+    
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 12) {
+                // Header Card
+                GlassCard {
+                    HStack {
+                        Label("Time", systemImage: "clock")
+                            .font(.headline)
+                            .foregroundColor(.mint)
+                            .symbolRenderingMode(.hierarchical)
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            AppDelegate.shared.openSettings()
+                        }) {
+                            Image(systemName: "gearshape.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                                .frame(width: 28, height: 28)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.trailing, 8)
+                        
+                        Text(formatTime(date: date, timeZone: .current))
+                            .font(.title3)
+                            .bold()
+                            .monospacedDigit()
+                    }
+                }
+                
+                // Calendar
+                GlassCard {
+                    CustomCalendarView(date: $calendarSelectedDate)
+                }
+                
+                // World Clocks
+                GlassCard {
+                    VStack(spacing: 8) {
+                        ForEach(clockManager.clocks.indices, id: \.self) { index in
+                            let clock = clockManager.clocks[index]
+                            let tz = clock.timeZone
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(clock.name)
+                                        .font(.system(size: 13, weight: .semibold))
+                                    Text(formatTime(date: date, timeZone: tz))
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.7))
+                                }
+                                Spacer()
+                                
+                                // Time difference indicator
+                                if !timeDifferenceString(to: tz).isEmpty {
+                                    Text(timeDifferenceString(to: tz))
+                                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Capsule().fill(Color.blue.opacity(0.7)))
+                                }
+                            }
+                            
+                            if index < clockManager.clocks.count - 1 {
+                                CustomDivider()
+                                    .padding(.vertical, 4)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding()
+            .background(
+                GeometryReader { geo -> Color in
+                    DispatchQueue.main.async {
+                        contentHeight = geo.size.height
+                    }
+                    return Color.clear
+                }
+            )
+        }
+        .frame(width: 320)
+        .frame(height: min(contentHeight, 850))
+        .background(VisualEffectView().ignoresSafeArea())
+        .preferredColorScheme(.dark)
+        .onAppear {
+            calendarSelectedDate = Date()
+            timer = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect().sink { [self] newDate in
+                self.date = newDate
+            }
+        }
+        .onDisappear {
+            timer?.cancel()
+            timer = nil
+        }
+    }
+    
+    private func formatTime(date: Date, timeZone: TimeZone) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        formatter.timeZone = timeZone
+        return formatter.string(from: date)
+    }
+    
+    private func timeDifferenceString(to timeZone: TimeZone) -> String {
+        if timeZone == TimeZone.current { return "" }
+        let diffSeconds = timeZone.secondsFromGMT() - TimeZone.current.secondsFromGMT()
+        let hours = diffSeconds / 3600
+        if hours > 0 {
+            return "+\(hours)h"
+        } else if hours < 0 {
+            return "\(hours)h"
+        }
+        return ""
+    }
+}
