@@ -403,8 +403,18 @@ class StatusItemController: NSObject {
         
         if let button = statusItem?.button, let window = panel {
             let buttonFrame = button.window?.convertToScreen(button.frame) ?? .zero
-            let xPos = buttonFrame.midX - window.frame.width / 2
+            var xPos = buttonFrame.midX - window.frame.width / 2
             let yPos = buttonFrame.minY - window.frame.height - 8
+            
+            if let screen = button.window?.screen {
+                let screenRect = screen.visibleFrame
+                if xPos + window.frame.width > screenRect.maxX - 8 {
+                    xPos = screenRect.maxX - window.frame.width - 8
+                }
+                if xPos < screenRect.minX + 8 {
+                    xPos = screenRect.minX + 8
+                }
+            }
             
             window.setFrameOrigin(NSPoint(x: xPos, y: yPos))
             
