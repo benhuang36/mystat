@@ -28,3 +28,6 @@ DerivedData/
 
 # macOS
 .DS_Store
+
+# Project specific
+project.md
