@@ -20,6 +20,11 @@ struct CPUPopoverView: View {
                         
                         Spacer()
                         
+                        Text(String(format: "%.0f%%", monitor.cpuUsage))
+                            .font(.title3)
+                            .bold()
+                            .monospacedDigit()
+                        
                         Button(action: {
                             AppDelegate.shared.openSettings(for: .cpu)
                         }) {
@@ -30,12 +35,7 @@ struct CPUPopoverView: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .padding(.trailing, 8)
-                        
-                        Text(String(format: "%.0f%%", monitor.cpuUsage))
-                            .font(.title3)
-                            .bold()
-                            .monospacedDigit()
+                        .padding(.leading, 8)
                     }
                     
                     Chart {

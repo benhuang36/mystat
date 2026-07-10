@@ -15,7 +15,12 @@ struct MemoryPopoverView: View {
                             .foregroundColor(.purple)
                             .symbolRenderingMode(.hierarchical)
                         
-                        Spacer()
+                        Spacer()                        
+                        Text(monitor.memoryUsageString)
+                            .font(.title3)
+                            .bold()
+                            .monospacedDigit()
+
                         
                         Button(action: {
                             AppDelegate.shared.openSettings(for: .memory)
@@ -27,12 +32,8 @@ struct MemoryPopoverView: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .padding(.trailing, 8)
-                        
-                        Text(monitor.memoryUsageString)
-                            .font(.title3)
-                            .bold()
-                            .monospacedDigit()
+                        .padding(.leading, 8)
+
                     }
                     
                     // Circular Charts

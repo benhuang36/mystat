@@ -15,7 +15,12 @@ struct DiskPopoverView: View {
                             .foregroundColor(.cyan)
                             .symbolRenderingMode(.hierarchical)
                         
-                        Spacer()
+                        Spacer()                        
+                        Text(monitor.diskFreeString)
+                            .font(.title3)
+                            .bold()
+                            .monospacedDigit()
+
                         
                         Button(action: {
                             AppDelegate.shared.openSettings(for: .disk)
@@ -27,12 +32,8 @@ struct DiskPopoverView: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .padding(.trailing, 8)
-                        
-                        Text(monitor.diskFreeString)
-                            .font(.title3)
-                            .bold()
-                            .monospacedDigit()
+                        .padding(.leading, 8)
+
                     }
                     
                     HStack(spacing: 15) {

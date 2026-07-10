@@ -26,7 +26,12 @@ struct TimePopoverView: View {
                             .foregroundColor(.mint)
                             .symbolRenderingMode(.hierarchical)
                         
-                        Spacer()
+                        Spacer()                        
+                        Text(formatTime(date: date, timeZone: .current))
+                            .font(.title3)
+                            .bold()
+                            .monospacedDigit()
+
                         
                         Button(action: {
                             AppDelegate.shared.openSettings(for: .time)
@@ -38,12 +43,8 @@ struct TimePopoverView: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .padding(.trailing, 8)
-                        
-                        Text(formatTime(date: date, timeZone: .current))
-                            .font(.title3)
-                            .bold()
-                            .monospacedDigit()
+                        .padding(.leading, 8)
+
                     }
                 }
                 

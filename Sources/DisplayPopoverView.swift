@@ -14,7 +14,9 @@ struct DisplayPopoverView: View {
                         .foregroundColor(.blue)
                         .symbolRenderingMode(.hierarchical)
                     
-                    Spacer()
+                    Spacer()                }
+                .padding(12)
+
                     
                     Button(action: {
                         AppDelegate.shared.openSettings(for: .display)
@@ -26,9 +28,8 @@ struct DisplayPopoverView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .padding(.trailing, 8)
-                }
-                .padding(12)
+                    .padding(.leading, 8)
+
             }
             
             if displayManager.displays.isEmpty {

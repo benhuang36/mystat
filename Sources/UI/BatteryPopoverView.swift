@@ -17,7 +17,12 @@ struct BatteryPopoverView: View {
                             .foregroundColor(stats.isCharging ? .green : .mint)
                             .symbolRenderingMode(.hierarchical)
                         
-                        Spacer()
+                        Spacer()                        
+                        Text(String(format: "%.0f%%", stats.percentage))
+                            .font(.title3)
+                            .bold()
+                            .monospacedDigit()
+
                         
                         Button(action: {
                             AppDelegate.shared.openSettings(for: .battery)
@@ -29,12 +34,8 @@ struct BatteryPopoverView: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .padding(.trailing, 8)
-                        
-                        Text(String(format: "%.0f%%", stats.percentage))
-                            .font(.title3)
-                            .bold()
-                            .monospacedDigit()
+                        .padding(.leading, 8)
+
                     }
                     
                     VStack(spacing: 8) {
