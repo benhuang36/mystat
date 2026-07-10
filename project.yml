@@ -12,6 +12,8 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_LSUIElement: YES # Run as a Menu Bar app (hide dock icon)
+        INFOPLIST_KEY_NSCalendarsUsageDescription: "MyStat needs access to your calendar to display upcoming events."
+        INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription: "MyStat needs full access to your calendar to display upcoming events."
         CODE_SIGN_IDENTITY: "-"
         CODE_SIGN_ENTITLEMENTS: ""
         ENABLE_HARDENED_RUNTIME: YES

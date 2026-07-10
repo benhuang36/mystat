@@ -302,6 +302,8 @@
 				MARKETING_VERSION = 0.1.1;
 				CURRENT_PROJECT_VERSION = 2;
 				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "MyStat needs access to your calendar to display upcoming events.";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "MyStat needs full access to your calendar to display upcoming events.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -442,6 +444,8 @@
 				MARKETING_VERSION = 0.1.1;
 				CURRENT_PROJECT_VERSION = 2;
 				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "MyStat needs access to your calendar to display upcoming events.";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "MyStat needs full access to your calendar to display upcoming events.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
