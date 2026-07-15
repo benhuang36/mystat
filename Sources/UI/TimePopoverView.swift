@@ -108,6 +108,11 @@ struct TimePopoverView: View {
                 self.date = newDate
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("PopoverDidOpen"))) { notification in
+            if let typeRaw = notification.object as? String, typeRaw == MonitorType.time.rawValue {
+                self.calendarSelectedDate = Date()
+            }
+        }
         .onDisappear {
             timer?.cancel()
             timer = nil

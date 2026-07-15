@@ -420,6 +420,7 @@ class StatusItemController: NSObject {
             
             window.alphaValue = 0.0
             window.makeKeyAndOrderFront(nil)
+            NotificationCenter.default.post(name: NSNotification.Name("PopoverDidOpen"), object: type.rawValue)
             
             DispatchQueue.main.async {
                 NSAnimationContext.runAnimationGroup { context in

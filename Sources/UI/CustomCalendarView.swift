@@ -211,6 +211,9 @@ struct CustomCalendarView: View {
         }
         .onChange(of: selectedDate) { newDate in
             eventManager.fetchEvents(for: newDate)
+            if !calendar.isDate(displayMonth, equalTo: newDate, toGranularity: .month) {
+                displayMonth = newDate
+            }
         }
     }
     

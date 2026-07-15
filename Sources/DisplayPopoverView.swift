@@ -168,6 +168,7 @@ struct DisplayCard: View {
                                         }
                                         .padding(.vertical, 8)
                                         .padding(.horizontal, 10)
+                                        .contentShape(Rectangle())
                                         .background(isSelected ? Color.blue.opacity(0.2) : Color.clear)
                                         .cornerRadius(6)
                                     }
