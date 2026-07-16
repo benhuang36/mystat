@@ -100,8 +100,9 @@ class StatusItemController: NSObject {
                 .sink { [weak self] _ in self?.updateButtonUI() }
                 .store(in: &cancellables)
         case .time:
-            // Handled via clock ticks or other
-            break
+            Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
+                .sink { [weak self] _ in self?.updateButtonUI() }
+                .store(in: &cancellables)
         case .display:
             DisplayManager.shared.$displays
                 .receive(on: DispatchQueue.main)
