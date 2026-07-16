@@ -19,6 +19,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         ]
         UserDefaults.standard.register(defaults: defaultPrefs)
         
+        // Disable automatic termination to ensure the app stays in the menu bar
+        ProcessInfo.processInfo.disableAutomaticTermination("MyStat is a continuous menu bar utility")
+        
         // Initialize the Menu Bar Manager to spawn icons based on settings
         _ = MenuBarManager.shared
     }
