@@ -3,6 +3,7 @@ import Charts
 struct BatteryPopoverView: View {
     @ObservedObject private var monitor = SystemMonitor.shared
     @ObservedObject private var historyManager = BatteryHistoryManager.shared
+    @State private var hoveredDate: Date? = nil
     
     var body: some View {
         let stats = monitor.batteryStats
@@ -87,12 +88,16 @@ struct BatteryPopoverView: View {
                             var result: [(BatteryDataPoint, Int)] = []
                             var currentSegmentID = 0
                             var previousState: Bool? = nil
+                            var previousDate: Date? = nil
                             for point in history {
-                                if let prev = previousState, prev != point.isCharging {
+                                if let prevDate = previousDate, point.timestamp.timeIntervalSince(prevDate) > 15 * 60 {
+                                    currentSegmentID += 1
+                                } else if let prev = previousState, prev != point.isCharging {
                                     currentSegmentID += 1
                                 }
                                 result.append((point, currentSegmentID))
                                 previousState = point.isCharging
+                                previousDate = point.timestamp
                             }
                             return result
                         }()
@@ -123,6 +128,43 @@ struct BatteryPopoverView: View {
                                         endPoint: .bottom
                                     )
                                 )
+                            }
+                            
+                            if let hoveredDate {
+                                if let point = historyManager.history.min(by: { abs($0.timestamp.timeIntervalSince(hoveredDate)) < abs($1.timestamp.timeIntervalSince(hoveredDate)) }) {
+                                    RuleMark(x: .value("Time", point.timestamp))
+                                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [5]))
+                                        .foregroundStyle(.gray.opacity(0.5))
+                                        .annotation(position: .top) {
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(point.timestamp, format: .dateTime.hour().minute())
+                                                    .font(.system(size: 10, weight: .bold))
+                                                Text("\(Int(point.percentage))% (\(point.isCharging ? "Charging" : "Battery"))")
+                                                    .font(.system(size: 10))
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            .padding(6)
+                                            .background(Color(NSColor.windowBackgroundColor).opacity(0.9))
+                                            .cornerRadius(6)
+                                            .shadow(radius: 2)
+                                        }
+                                }
+                            }
+                        }
+                        .chartOverlay { proxy in
+                            GeometryReader { geometry in
+                                Rectangle().fill(.clear).contentShape(Rectangle())
+                                    .onContinuousHover { phase in
+                                        switch phase {
+                                        case .active(let location):
+                                            let x = location.x - geometry[proxy.plotAreaFrame].origin.x
+                                            if let date: Date = proxy.value(atX: x) {
+                                                hoveredDate = date
+                                            }
+                                        case .ended:
+                                            hoveredDate = nil
+                                        }
+                                    }
                             }
                         }
                         .chartYScale(domain: 0...100)
