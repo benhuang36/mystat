@@ -100,8 +100,13 @@ class StatusItemController: NSObject {
                 .sink { [weak self] _ in self?.updateButtonUI() }
                 .store(in: &cancellables)
         case .time:
-            Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
-                .sink { [weak self] _ in self?.updateButtonUI() }
+            setupTimeTimer()
+            
+            NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] _ in
+                    self?.setupTimeTimer() // Re-evaluate if seconds were toggled
+                }
                 .store(in: &cancellables)
         case .display:
             DisplayManager.shared.$displays
@@ -126,6 +131,37 @@ class StatusItemController: NSObject {
                 }
             }
             .store(in: &cancellables)
+    }
+    
+    private var timeTimerCancellable: AnyCancellable?
+    private var lastTimerModeHasSeconds: Bool? = nil
+    
+    private func setupTimeTimer() {
+        let hasSeconds = TimeFormatHelper.shared.formatTokens.contains(.second)
+        
+        // Prevent recreating the exact same timer unnecessarily
+        if let lastMode = lastTimerModeHasSeconds, lastMode == hasSeconds, timeTimerCancellable != nil {
+            return
+        }
+        
+        timeTimerCancellable?.cancel()
+        lastTimerModeHasSeconds = hasSeconds
+        
+        if hasSeconds {
+            let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in self?.updateButtonUI() }
+            RunLoop.main.add(timer, forMode: .common)
+            timeTimerCancellable = AnyCancellable { timer.invalidate() }
+        } else {
+            let now = Date()
+            let calendar = Calendar.current
+            let nextMinute = calendar.nextDate(after: now, matching: DateComponents(second: 0), matchingPolicy: .nextTime) ?? now.addingTimeInterval(60)
+            
+            let timer = Timer(fire: nextMinute, interval: 60.0, repeats: true) { [weak self] _ in self?.updateButtonUI() }
+            RunLoop.main.add(timer, forMode: .common)
+            timeTimerCancellable = AnyCancellable { timer.invalidate() }
+            
+            self.updateButtonUI()
+        }
     }
     
     @objc private func updateButtonUI() {
