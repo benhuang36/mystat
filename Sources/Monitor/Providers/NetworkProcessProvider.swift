@@ -60,6 +60,8 @@ class NetworkProcessProvider {
             
             let processNameAndPid = columns[processIndex]
             guard processNameAndPid.contains(".") else { continue }
+            // Filter out connection rows, we only want the top-level process row
+            guard !processNameAndPid.contains("<->") else { continue }
             
             let bytesInStr = columns[processIndex + 1]
             let bytesOutStr = columns[processIndex + 2]
