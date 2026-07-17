@@ -59,17 +59,17 @@ class NetworkProcessProvider {
             guard columns.count > processIndex + 2 else { continue }
             
             let processNameAndPid = columns[processIndex]
-            guard processNameAndPid.contains(".") && !processNameAndPid.contains(" ") else { continue }
+            guard processNameAndPid.contains(".") else { continue }
             
             let bytesInStr = columns[processIndex + 1]
             let bytesOutStr = columns[processIndex + 2]
             
             guard let bytesIn = UInt64(bytesInStr), let bytesOut = UInt64(bytesOutStr) else { continue }
             
-            let parts = processNameAndPid.components(separatedBy: ".")
+            var parts = processNameAndPid.components(separatedBy: ".")
             guard parts.count >= 2 else { continue }
-            let name = parts[0]
-            let pidString = parts.last! // The last part is usually the PID
+            let pidString = parts.removeLast()
+            let name = parts.joined(separator: ".")
             
             if let previousIn = previousBytesIn[pidString], let lastTime = lastUpdateTimes[pidString] {
                 let timeDiff = now - lastTime
