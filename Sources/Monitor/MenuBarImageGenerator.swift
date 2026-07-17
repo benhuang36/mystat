@@ -238,6 +238,111 @@ struct MenuBarImageGenerator {
         return image
     }
     
+    /// Generates one tiny vertical bar per CPU core (iStat-style "Core Bars")
+    static func generateCoreBars(usages: [Double], color: NSColor) -> NSImage {
+        let cores = usages.isEmpty ? [0.0] : Array(usages.prefix(16))
+        let barWidth: CGFloat = 3.0
+        let gap: CGFloat = 1.0
+        let height: CGFloat = 16.0
+        let width = CGFloat(cores.count) * barWidth + CGFloat(cores.count - 1) * gap
+        let size = NSSize(width: width, height: height)
+
+        let image = NSImage(size: size, flipped: false) { _ in
+            for (i, usage) in cores.enumerated() {
+                let x = CGFloat(i) * (barWidth + gap)
+
+                // Background track
+                let trackRect = NSRect(x: x, y: 0, width: barWidth, height: height)
+                NSColor.controlTextColor.withAlphaComponent(0.25).setFill()
+                NSBezierPath(roundedRect: trackRect, xRadius: 1, yRadius: 1).fill()
+
+                // Fill (minimum 1pt so idle cores stay visible)
+                let fillHeight = max(1.0, CGFloat(usage / 100.0) * height)
+                let fillRect = NSRect(x: x, y: 0, width: barWidth, height: fillHeight)
+                color.setFill()
+                NSBezierPath(roundedRect: fillRect, xRadius: 1, yRadius: 1).fill()
+            }
+            return true
+        }
+        return image
+    }
+
+    /// Generates a horizontal capacity bar. With `showNub` it takes a battery shape.
+    static func generateCapacityBar(value: Double, color: NSColor, showNub: Bool = false) -> NSImage {
+        let bodyWidth: CGFloat = 24.0
+        let nubWidth: CGFloat = showNub ? 2.0 : 0.0
+        let height: CGFloat = 11.0
+        let size = NSSize(width: bodyWidth + nubWidth + (showNub ? 1.0 : 0.0), height: height)
+
+        let image = NSImage(size: size, flipped: false) { _ in
+            let bodyRect = NSRect(x: 0, y: 0, width: bodyWidth, height: height)
+
+            // Outline
+            let outline = NSBezierPath(roundedRect: bodyRect.insetBy(dx: 0.5, dy: 0.5), xRadius: 2.5, yRadius: 2.5)
+            outline.lineWidth = 1
+            NSColor.controlTextColor.withAlphaComponent(0.6).setStroke()
+            outline.stroke()
+
+            // Battery nub
+            if showNub {
+                let nubRect = NSRect(x: bodyWidth + 1.0, y: height / 2 - 2, width: nubWidth, height: 4)
+                NSColor.controlTextColor.withAlphaComponent(0.6).setFill()
+                NSBezierPath(roundedRect: nubRect, xRadius: 1, yRadius: 1).fill()
+            }
+
+            // Fill level
+            let inset: CGFloat = 2.0
+            let maxFillWidth = bodyRect.width - inset * 2
+            let fillWidth = max(0, min(maxFillWidth, CGFloat(value / 100.0) * maxFillWidth))
+            if fillWidth > 0.5 {
+                let fillRect = NSRect(x: inset, y: inset, width: fillWidth, height: bodyRect.height - inset * 2)
+                color.setFill()
+                NSBezierPath(roundedRect: fillRect, xRadius: 1.5, yRadius: 1.5).fill()
+            }
+            return true
+        }
+        return image
+    }
+
+    /// Appends a single-line value text (e.g. "42%") to the right of an image
+    static func addValueText(_ text: String, to image: NSImage) -> NSImage {
+        let spacing: CGFloat = 3
+
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium),
+            .foregroundColor: NSColor.controlTextColor
+        ]
+
+        let attrString = NSAttributedString(string: text, attributes: attributes)
+        let textSize = attrString.size()
+
+        // Reserve a stable width to prevent horizontal jitter
+        let minTextWidth: CGFloat = 30.0
+        let actualTextWidth = max(textSize.width, minTextWidth)
+
+        let totalHeight = max(image.size.height, textSize.height)
+        let newSize = NSSize(width: image.size.width + spacing + actualTextWidth, height: totalHeight)
+
+        let newImage = NSImage(size: newSize, flipped: false) { _ in
+            let context = NSGraphicsContext.current?.cgContext
+            context?.saveGState()
+            context?.setShouldAntialias(true)
+            context?.setShouldSmoothFonts(true)
+
+            let imgY = (totalHeight - image.size.height) / 2
+            image.draw(in: NSRect(x: 0, y: imgY, width: image.size.width, height: image.size.height))
+
+            let textY = (totalHeight - textSize.height) / 2
+            attrString.draw(in: NSRect(x: image.size.width + spacing, y: textY, width: actualTextWidth, height: textSize.height))
+
+            context?.restoreGState()
+            return true
+        }
+
+        newImage.isTemplate = image.isTemplate
+        return newImage
+    }
+
     /// Wraps an image with a vertical label (e.g. C\nP\nU) on its left side
     static func addLabel(_ label: String, to image: NSImage) -> NSImage {
         let labelWidth: CGFloat = 7

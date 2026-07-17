@@ -6,15 +6,21 @@ struct BatteryStats {
     var isCharging: Bool
     var capacity: Double
     var maxCapacity: Double
+    var designCapacity: Double
     var cycleCount: Int
     var timeRemaining: Int // in minutes, -1 means calculating
     var health: String
-    
+
     var percentage: Double {
         return maxCapacity > 0 ? (capacity / maxCapacity) * 100.0 : 0
     }
-    
-    static let empty = BatteryStats(isPresent: false, isCharging: false, capacity: 0, maxCapacity: 0, cycleCount: 0, timeRemaining: 0, health: "Unknown")
+
+    /// Health as Full Charge Capacity / Design Capacity, 0 if unknown
+    var healthPercentage: Double {
+        return designCapacity > 0 ? (maxCapacity / designCapacity) * 100.0 : 0
+    }
+
+    static let empty = BatteryStats(isPresent: false, isCharging: false, capacity: 0, maxCapacity: 0, designCapacity: 0, cycleCount: 0, timeRemaining: 0, health: "Unknown")
 }
 
 class BatteryProvider {
@@ -69,9 +75,11 @@ class BatteryProvider {
                     stats.cycleCount = properties["CycleCount"] as? Int ?? 0
                     stats.timeRemaining = properties["TimeRemaining"] as? Int ?? -1
                     
+                    stats.designCapacity = Double(properties["DesignCapacity"] as? Int ?? 0)
+
                     // Infer health
-                    if stats.maxCapacity > 0, let designCap = properties["DesignCapacity"] as? Int, designCap > 0 {
-                        let healthRatio = stats.maxCapacity / Double(designCap)
+                    if stats.maxCapacity > 0, stats.designCapacity > 0 {
+                        let healthRatio = stats.maxCapacity / stats.designCapacity
                         if healthRatio > 0.8 { stats.health = "Good" }
                         else if healthRatio > 0.6 { stats.health = "Fair" }
                         else { stats.health = "Poor" }

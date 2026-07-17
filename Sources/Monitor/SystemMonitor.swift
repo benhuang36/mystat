@@ -4,11 +4,17 @@ class SystemMonitor: ObservableObject {
     static let shared = SystemMonitor()
     
     @Published var cpuUsage: Double = 0.0
+    @Published var cpuUserUsage: Double = 0.0
+    @Published var cpuSystemUsage: Double = 0.0
     @Published var cpuUsageHistory: [Double] = Array(repeating: 0.0, count: 60)
     @Published var cpuCoreUsages: [Double] = []
     
     @Published var memoryUsageString: String = "-- GB"
     @Published var swapUsageString: String = ""
+    @Published var appMemoryString: String = "--"
+    @Published var wiredMemoryString: String = "--"
+    @Published var compressedMemoryString: String = "--"
+    @Published var memoryPressureRatio: Double = 0.0
     @Published var memoryUsageRatio: Double = 0.0
     @Published var memoryUsageHistory: [Double] = Array(repeating: 0.0, count: 60)
     
@@ -30,8 +36,7 @@ class SystemMonitor: ObservableObject {
     @Published var topPowerProcesses: [TopProcessInfo] = []
     @Published var topDiskReadProcesses: [TopProcessInfo] = []
     @Published var topDiskWriteProcesses: [TopProcessInfo] = []
-    @Published var topNetworkDownloadProcesses: [TopProcessInfo] = []
-    @Published var topNetworkUploadProcesses: [TopProcessInfo] = []
+    @Published var topNetworkProcesses: [NetworkProcessEntry] = []
     
     // New Advanced Modules
     @Published var gpuUsage: Double = 0.0
@@ -44,6 +49,7 @@ class SystemMonitor: ObservableObject {
     private var timer: Timer?
     private var isFetchingPower = false
     private var lastPowerFetchTime: TimeInterval = 0.0
+    private var isFetchingProcesses = false
     private let cpuProvider = CPUProvider()
     private let memoryProvider = MemoryProvider()
     private let diskProvider = DiskProvider()
@@ -94,6 +100,8 @@ class SystemMonitor: ObservableObject {
         if hasActivePopovers || showCPU {
             let cpuData = cpuProvider.getCPUUsage()
             cpuUsage = cpuData.total
+            cpuUserUsage = cpuData.user
+            cpuSystemUsage = cpuData.system
             cpuCoreUsages = cpuData.perCore
             
             cpuUsageHistory.append(cpuUsage)
@@ -108,7 +116,14 @@ class SystemMonitor: ObservableObject {
             
             let swapUsedGB = Double(memStats.swapUsed) / (1024 * 1024 * 1024)
             swapUsageString = String(format: "%.1f GB", swapUsedGB)
-            
+
+            let gb = 1024.0 * 1024.0 * 1024.0
+            appMemoryString = String(format: "%.1f GB", Double(memStats.active) / gb)
+            wiredMemoryString = String(format: "%.1f GB", Double(memStats.wired) / gb)
+            compressedMemoryString = String(format: "%.1f GB", Double(memStats.compressed) / gb)
+            // Approximation of macOS memory pressure: wired + compressed vs total
+            memoryPressureRatio = memStats.total > 0 ? Double(memStats.wired + memStats.compressed) / Double(memStats.total) : 0
+
             memoryUsageRatio = usedMemGB / totalMemGB
             memoryUsageHistory.append(memoryUsageRatio * 100.0)
             if memoryUsageHistory.count > 60 { memoryUsageHistory.removeFirst() }
@@ -152,6 +167,7 @@ class SystemMonitor: ObservableObject {
         if activePopoversCount > 0 {
             gpuUsage = gpuProvider.getGPUUsage()
             sensorStats = sensorProvider.getSensorStats(cpuUsage: cpuUsage)
+            NetworkInfoManager.shared.refresh()
         }
         
         // Battery is only needed if the battery menu bar item is visible or popovers are open
@@ -163,17 +179,22 @@ class SystemMonitor: ObservableObject {
         
         // If no UI popovers are active, we can skip fetching processes entirely to save massive CPU!
         if activePopoversCount > 0 {
-            // Update processes (dispatch to background queue so it doesn't block main thread)
-            DispatchQueue.global(qos: .background).async {
-                let allTops = self.processProvider.getAllTopProcesses()
-                let netTops = self.networkProcessProvider.getTopNetworkProcesses(count: 5)
-                DispatchQueue.main.async {
-                    self.topCPUProcesses = allTops.cpu
-                    self.topMemoryProcesses = allTops.memory
-                    self.topDiskReadProcesses = allTops.diskRead
-                    self.topDiskWriteProcesses = allTops.diskWrite
-                    self.topNetworkDownloadProcesses = netTops.download
-                    self.topNetworkUploadProcesses = netTops.upload
+            // Update processes (dispatch to background queue so it doesn't block main thread).
+            // Guard against overlapping fetches: nettop/ps take ~1s each, and two concurrent
+            // samples taken milliseconds apart produce near-zero deltas that wipe the lists.
+            if !isFetchingProcesses {
+                isFetchingProcesses = true
+                DispatchQueue.global(qos: .background).async {
+                    let allTops = self.processProvider.getAllTopProcesses()
+                    let netTops = self.networkProcessProvider.getTopNetworkProcesses(count: 5)
+                    DispatchQueue.main.async {
+                        self.topCPUProcesses = allTops.cpu
+                        self.topMemoryProcesses = allTops.memory
+                        self.topDiskReadProcesses = allTops.diskRead
+                        self.topDiskWriteProcesses = allTops.diskWrite
+                        self.topNetworkProcesses = netTops
+                        self.isFetchingProcesses = false
+                    }
                 }
             }
             

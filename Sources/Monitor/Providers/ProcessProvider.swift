@@ -1,10 +1,57 @@
 import Foundation
+import AppKit
+import UniformTypeIdentifiers
 
 struct TopProcessInfo: Identifiable {
     let id = UUID()
     let pid: Int
     let name: String
     let usage: String
+}
+
+/// Resolves an app icon for a pid. Helper processes living inside an .app
+/// bundle get their parent app's icon; bare binaries get the generic
+/// executable icon. Results are cached by binary path.
+enum ProcessIcon {
+    private static var pathCache: [String: NSImage] = [:]
+    private static let lock = NSLock()
+    private static let generic: NSImage = {
+        let icon = NSWorkspace.shared.icon(for: .unixExecutable)
+        icon.size = NSSize(width: 16, height: 16)
+        return icon
+    }()
+
+    static func icon(for pid: Int) -> NSImage {
+        guard pid > 0 else { return generic }
+
+        var buffer = [CChar](repeating: 0, count: 4096)
+        let length = proc_pidpath(Int32(pid), &buffer, UInt32(buffer.count))
+        guard length > 0 else { return generic }
+        let path = String(cString: buffer)
+
+        lock.lock()
+        if let cached = pathCache[path] {
+            lock.unlock()
+            return cached
+        }
+        lock.unlock()
+
+        // Use the enclosing .app bundle's icon when there is one
+        let iconPath: String
+        if let appRange = path.range(of: ".app/") {
+            iconPath = String(path[..<appRange.lowerBound]) + ".app"
+        } else {
+            iconPath = path
+        }
+
+        let icon = NSWorkspace.shared.icon(forFile: iconPath)
+        icon.size = NSSize(width: 16, height: 16)
+
+        lock.lock()
+        pathCache[path] = icon
+        lock.unlock()
+        return icon
+    }
 }
 
 struct AllTopProcesses {
@@ -170,11 +217,13 @@ class ProcessProvider {
                     let parts = line.split(separator: " ", omittingEmptySubsequences: true)
                     if parts.count >= 3 {
                         let pidStr = String(parts[0])
-                        if Int(pidStr) == nil { continue } // skip header or invalid
+                        guard let pid = Int(pidStr) else { continue } // skip header or invalid
                         let powerStr = String(parts[parts.count - 1])
-                        let nameStr = parts[1..<parts.count-1].joined(separator: " ")
-                        
-                        processes.append(TopProcessInfo(pid: Int(pidStr) ?? 0, name: nameStr, usage: powerStr))
+                        // top truncates COMMAND to a fixed width; resolve the full name from the pid
+                        let truncatedName = parts[1..<parts.count-1].joined(separator: " ")
+                        let nameStr = Self.fullProcessName(pid: Int32(pid)) ?? truncatedName
+
+                        processes.append(TopProcessInfo(pid: pid, name: nameStr, usage: powerStr))
                     }
                 }
             }
@@ -182,5 +231,14 @@ class ProcessProvider {
         } catch {
             return []
         }
+    }
+
+    /// Resolves the full binary name for a pid (top/nettop truncate names)
+    static func fullProcessName(pid: Int32) -> String? {
+        var buffer = [CChar](repeating: 0, count: 4096)
+        let length = proc_pidpath(pid, &buffer, UInt32(buffer.count))
+        guard length > 0 else { return nil }
+        let name = URL(fileURLWithPath: String(cString: buffer)).lastPathComponent
+        return name.isEmpty ? nil : name
     }
 }

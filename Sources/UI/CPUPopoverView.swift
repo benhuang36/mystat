@@ -12,32 +12,8 @@ struct CPUPopoverView: View {
             // Header & Chart Card
             GlassCard {
                 VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Label("CPU", systemImage: "cpu")
-                            .font(.headline)
-                            .foregroundColor(.indigo)
-                            .symbolRenderingMode(.hierarchical)
-                        
-                        Spacer()
-                        
-                        Text(String(format: "%.0f%%", monitor.cpuUsage))
-                            .font(.title3)
-                            .bold()
-                            .monospacedDigit()
-                        
-                        Button(action: {
-                            AppDelegate.shared.openSettings(for: .cpu)
-                        }) {
-                            Image(systemName: "gearshape.fill")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                                .frame(width: 28, height: 28)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.leading, 8)
-                    }
-                    
+                    PopoverHeader(type: .cpu, value: String(format: "%.0f%%", monitor.cpuUsage))
+
                     Chart {
                         ForEach(Array(monitor.cpuUsageHistory.enumerated()), id: \.offset) { index, value in
                             LineMark(
@@ -58,17 +34,17 @@ struct CPUPopoverView: View {
                     .chartYScale(domain: 0...100)
                     .chartXAxis(.hidden)
                     .chartYAxis(.hidden)
-                    .frame(height: 60)
-                    
+                    .frame(height: PopoverStyle.chartHeight)
+
                     HStack {
                         Circle().fill(Color.indigo).frame(width: 8, height: 8)
-                        (Text("User ") + Text(String(format: "%.0f%%", monitor.cpuUsage * 0.7)))
+                        (Text("User ") + Text(String(format: "%.0f%%", monitor.cpuUserUsage)))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .monospacedDigit()
                         Spacer()
                         Circle().fill(Color.cyan).frame(width: 8, height: 8)
-                        (Text("System ") + Text(String(format: "%.0f%%", monitor.cpuUsage * 0.3)))
+                        (Text("System ") + Text(String(format: "%.0f%%", monitor.cpuSystemUsage)))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .monospacedDigit()
@@ -97,32 +73,21 @@ struct CPUPopoverView: View {
             // Processes Card
             GlassCard {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("Top Processes", systemImage: "list.dash")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
+                    CardSectionHeader(title: "Top Processes")
+
                     CustomDivider().padding(.vertical, 4)
-                    
-                    VStack(spacing: 6) {
-                        ForEach(Array(monitor.topCPUProcesses.enumerated()), id: \.element.id) { index, process in
-                            VStack(spacing: 6) {
-                                HStack {
-                                    Text(process.name)
-                                        .font(.system(size: 12, weight: .medium))
-                                        .lineLimit(1)
-                                        .truncationMode(.tail)
-                                    Spacer()
-                                    Text("\(process.usage)%")
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .monospacedDigit()
-                                        .foregroundColor((Double(process.usage) ?? 0) > 20 ? .orange : .primary)
-                                }
-                                if index < monitor.topCPUProcesses.count - 1 {
-                                    CustomDivider()
-                                }
-                            }
-                        }
-                    }
+
+                    ProcessListView(
+                        rows: monitor.topCPUProcesses.map { process in
+                            ProcessRowItem(
+                                name: process.name,
+                                value: "\(process.usage)%",
+                                valueColor: (Double(process.usage) ?? 0) > 20 ? .orange : .primary,
+                                pid: process.pid
+                            )
+                        },
+                        minRows: 5
+                    )
                 }
             }
             
@@ -166,7 +131,7 @@ struct CPUPopoverView: View {
             }
         }
         .padding()
-        .frame(width: 320)
+        .frame(width: PopoverStyle.width)
         .background(VisualEffectView().ignoresSafeArea())
         .preferredColorScheme(.dark)
     }

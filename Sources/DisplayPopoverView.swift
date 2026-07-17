@@ -8,26 +8,7 @@ struct DisplayPopoverView: View {
         VStack(spacing: 12) {
             // Header Card
             GlassCard {
-                HStack {
-                    Label("Displays", systemImage: "display")
-                        .font(.headline)
-                        .foregroundColor(.blue)
-                        .symbolRenderingMode(.hierarchical)
-                    
-                    Spacer()
-                    
-                    Button(action: {
-                        AppDelegate.shared.openSettings(for: .display)
-                    }) {
-                        Image(systemName: "gearshape.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
-                            .frame(width: 28, height: 28)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(12)
+                PopoverHeader(type: .display)
             }
             
             if displayManager.displays.isEmpty {
@@ -44,7 +25,7 @@ struct DisplayPopoverView: View {
             }
         }
         .padding()
-        .frame(width: 320)
+        .frame(width: PopoverStyle.width)
         .background(VisualEffectView().ignoresSafeArea())
         .preferredColorScheme(.dark)
     }

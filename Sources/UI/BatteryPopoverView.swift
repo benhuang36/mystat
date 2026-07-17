@@ -12,57 +12,37 @@ struct BatteryPopoverView: View {
             // Header & Info Card
             GlassCard {
                 VStack(spacing: 12) {
-                    HStack {
-                        Label("Battery", systemImage: stats.isCharging ? "battery.100.bolt" : "battery.100")
-                            .font(.headline)
-                            .foregroundColor(stats.isCharging ? .green : .mint)
-                            .symbolRenderingMode(.hierarchical)
-                        
-                        Spacer()                        
-                        Text(String(format: "%.0f%%", stats.percentage))
-                            .font(.title3)
-                            .bold()
-                            .monospacedDigit()
+                    PopoverHeader(
+                        type: .battery,
+                        value: String(format: "%.0f%%", stats.percentage),
+                        systemImageOverride: stats.isCharging ? "battery.100.bolt" : "battery.100",
+                        accentOverride: stats.isCharging ? .green : .mint
+                    )
 
-                        
-                        Button(action: {
-                            AppDelegate.shared.openSettings(for: .battery)
-                        }) {
-                            Image(systemName: "gearshape.fill")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                                .frame(width: 28, height: 28)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.leading, 8)
-
-                    }
-                    
                     VStack(spacing: 8) {
                         HStack {
                             Text("Source")
-                                .font(.system(size: 12, weight: .medium))
+                                .font(PopoverStyle.rowLabelFont)
                                 .foregroundColor(.secondary)
                             Spacer()
                             Text(LocalizedStringKey(stats.isCharging ? "Power Adapter" : "Battery"))
-                                .font(.system(size: 12, weight: .semibold))
+                                .font(PopoverStyle.rowValueFont)
                         }
-                        
+
                         if !stats.isCharging {
                             HStack {
                                 Text("Time Remaining")
-                                    .font(.system(size: 12, weight: .medium))
+                                    .font(PopoverStyle.rowLabelFont)
                                     .foregroundColor(.secondary)
                                 Spacer()
                                 // Filter out max values like 65535 minutes which mean calculating
                                 if stats.timeRemaining > 0 && stats.timeRemaining < 10000 {
                                     Text("\(stats.timeRemaining / 60)h \(stats.timeRemaining % 60)m")
-                                        .font(.system(size: 12, weight: .semibold))
+                                        .font(PopoverStyle.rowValueFont)
                                         .monospacedDigit()
                                 } else {
                                     Text("Calculating...")
-                                        .font(.system(size: 12, weight: .semibold))
+                                        .font(PopoverStyle.rowValueFont)
                                         .monospacedDigit()
                                         .foregroundColor(.secondary)
                                 }
@@ -219,11 +199,18 @@ struct BatteryPopoverView: View {
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.secondary)
                         Spacer()
-                        Text(LocalizedStringKey(stats.health))
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(stats.health == "Good" ? .green : .orange)
+                        HStack(spacing: 4) {
+                            if stats.healthPercentage > 0 {
+                                Text(String(format: "%.0f%%", stats.healthPercentage))
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .monospacedDigit()
+                            }
+                            Text(LocalizedStringKey(stats.health))
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(healthColor(for: stats))
+                        }
                     }
-                    
+
                     HStack {
                         Text("Cycle Count")
                             .font(.system(size: 12, weight: .medium))
@@ -233,15 +220,39 @@ struct BatteryPopoverView: View {
                             .font(.system(size: 12, weight: .semibold))
                             .monospacedDigit()
                     }
-                    
+
+                    Divider()
+
                     HStack {
-                        Text("Capacity")
+                        Text("Battery Charge")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.secondary)
                         Spacer()
-                        Text("\(Int(stats.capacity)) / \(Int(stats.maxCapacity)) mAh")
+                        Text("\(Int(stats.capacity)) mAh")
                             .font(.system(size: 12, weight: .semibold))
                             .monospacedDigit()
+                    }
+
+                    HStack {
+                        Text("Full Charge Capacity")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text("\(Int(stats.maxCapacity)) mAh")
+                            .font(.system(size: 12, weight: .semibold))
+                            .monospacedDigit()
+                    }
+
+                    if stats.designCapacity > 0 {
+                        HStack {
+                            Text("Design Capacity")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text("\(Int(stats.designCapacity)) mAh")
+                                .font(.system(size: 12, weight: .semibold))
+                                .monospacedDigit()
+                        }
                     }
                 }
             }
@@ -253,32 +264,32 @@ struct BatteryPopoverView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
-                    VStack(spacing: 6) {
-                        if monitor.topPowerProcesses.isEmpty {
-                            Text("Calculating...")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                        } else {
-                            ForEach(monitor.topPowerProcesses) { process in
-                                HStack {
-                                    Text(process.name)
-                                        .font(.system(size: 12, weight: .medium))
-                                        .lineLimit(1)
-                                        .truncationMode(.tail)
-                                    Spacer()
-                                    Text(process.usage)
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .monospacedDigit()
-                                }
+                    if monitor.topPowerProcesses.isEmpty {
+                        Text("Calculating...")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    } else {
+                        ProcessListView(
+                            rows: monitor.topPowerProcesses.map {
+                                ProcessRowItem(name: $0.name, value: $0.usage, pid: $0.pid)
                             }
-                        }
+                        )
                     }
                 }
             }
         }
         .padding()
-        .frame(width: 320)
+        .frame(width: PopoverStyle.width)
         .background(VisualEffectView().ignoresSafeArea())
         .preferredColorScheme(.dark)
+    }
+
+    private func healthColor(for stats: BatteryStats) -> Color {
+        switch stats.health {
+        case "Good": return .green
+        case "Fair": return .orange
+        case "Poor": return .red
+        default: return .secondary
+        }
     }
 }

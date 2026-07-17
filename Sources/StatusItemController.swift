@@ -89,6 +89,11 @@ class StatusItemController: NSObject {
                 .receive(on: DispatchQueue.main)
                 .sink { [weak self] _ in self?.updateButtonUI() }
                 .store(in: &cancellables)
+            // Read speed updates every tick; needed to animate the history graph
+            SystemMonitor.shared.$diskReadSpeed
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] _ in self?.updateButtonUI() }
+                .store(in: &cancellables)
         case .network:
             SystemMonitor.shared.$networkDownloadSpeed
                 .receive(on: DispatchQueue.main)
@@ -326,8 +331,11 @@ class StatusItemController: NSObject {
                 color = .systemBlue
             case .disk:
                 value = SystemMonitor.shared.diskUsageRatio * 100
-                history = []
+                // History style shows read (top) / write (bottom) activity
+                history = SystemMonitor.shared.diskReadHistory
+                secondaryHistory = SystemMonitor.shared.diskWriteHistory
                 color = .systemPurple
+                secondaryColor = .systemOrange
             case .network:
                 let kbOut = SystemMonitor.shared.networkUploadSpeed / 1024
                 let kbIn = SystemMonitor.shared.networkDownloadSpeed / 1024
@@ -341,13 +349,30 @@ class StatusItemController: NSObject {
                 secondaryHistory = SystemMonitor.shared.networkUploadHistory
                 secondaryColor = NSColor(calibratedRed: 1.0, green: 0.2, blue: 0.2, alpha: 1.0) // Red
             case .battery:
-                value = SystemMonitor.shared.batteryStats.percentage
+                let stats = SystemMonitor.shared.batteryStats
+                value = stats.percentage
                 history = []
-                color = SystemMonitor.shared.batteryStats.isCharging ? .systemGreen : .systemYellow
+                if stats.isCharging {
+                    color = .systemGreen
+                } else if stats.percentage <= 20 {
+                    color = .systemRed
+                } else {
+                    color = .controlTextColor
+                }
             case .time, .display:
                 break
             }
-            
+
+            // User-selected chart colors override the per-monitor defaults
+            let colorPref = UserDefaults.standard.string(forKey: "\(type.rawValue.lowercased())ChartColor") ?? MenuBarColor.auto.rawValue
+            if let customColor = MenuBarColor(rawValue: colorPref)?.nsColor {
+                color = customColor
+            }
+            let secondaryPref = UserDefaults.standard.string(forKey: "\(type.rawValue.lowercased())SecondaryColor") ?? MenuBarColor.auto.rawValue
+            if secondaryColor != nil, let customSecondary = MenuBarColor(rawValue: secondaryPref)?.nsColor {
+                secondaryColor = customSecondary
+            }
+
             if styleRaw == DisplayStyle.history.rawValue {
                 button.image = MenuBarImageGenerator.generateHistoryChart(history: history, color: color, secondaryHistory: secondaryHistory, secondaryColor: secondaryColor)
             } else if styleRaw == DisplayStyle.pieChart.rawValue {
@@ -356,8 +381,18 @@ class StatusItemController: NSObject {
                 button.image = MenuBarImageGenerator.generateGauge(value: value, color: color, secondaryValue: secondaryValue, secondaryColor: secondaryColor)
             } else if styleRaw == DisplayStyle.barChart.rawValue {
                 button.image = MenuBarImageGenerator.generateBarChart(value: value, color: color, secondaryValue: secondaryValue, secondaryColor: secondaryColor)
+            } else if styleRaw == DisplayStyle.coreBars.rawValue {
+                button.image = MenuBarImageGenerator.generateCoreBars(usages: SystemMonitor.shared.cpuCoreUsages, color: color)
+            } else if styleRaw == DisplayStyle.capacityBar.rawValue {
+                button.image = MenuBarImageGenerator.generateCapacityBar(value: value, color: color, showNub: type == .battery)
             } else {
                 button.image = getSymbolImage()
+            }
+
+            // Append current value text (e.g. "42%") if enabled
+            let showValue = UserDefaults.standard.bool(forKey: "\(type.rawValue.lowercased())ShowValue")
+            if showValue && type != .network, let chartImage = button.image {
+                button.image = MenuBarImageGenerator.addValueText(String(format: "%.0f%%", value), to: chartImage)
             }
             
             // Add label if toggled and not falling back to standard icon
@@ -420,8 +455,11 @@ class StatusItemController: NSObject {
     func showPopover(_ sender: AnyObject?) {
         NotificationCenter.default.post(name: NSNotification.Name("CloseAllPopovers"), object: self)
         
+        // Count every open (closePopover decrements every close); the panel itself
+        // is created once and kept alive for reuse, so this must NOT be tied to creation.
+        SystemMonitor.shared.activePopoversCount += 1
+
         if panel == nil {
-            SystemMonitor.shared.activePopoversCount += 1
             let view: AnyView
             switch type {
             case .cpu: view = AnyView(RootEnvironmentView { CPUPopoverView() })

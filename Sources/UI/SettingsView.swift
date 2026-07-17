@@ -8,6 +8,80 @@ enum DisplayStyle: String, CaseIterable {
     case pieChart = "Pie Chart"
     case gauge = "Gauge"
     case barChart = "Bar Chart"
+    case coreBars = "Core Bars"
+    case capacityBar = "Capacity Bar"
+
+    var isGraphical: Bool {
+        switch self {
+        case .icon, .text: return false
+        default: return true
+        }
+    }
+
+    static func available(for type: MonitorType) -> [DisplayStyle] {
+        switch type {
+        case .cpu: return [.icon, .text, .history, .coreBars, .barChart, .pieChart, .gauge, .capacityBar]
+        case .memory, .disk: return [.icon, .text, .history, .barChart, .pieChart, .gauge, .capacityBar]
+        case .network: return [.icon, .text, .history, .barChart, .pieChart, .gauge]
+        case .battery: return [.icon, .text, .capacityBar]
+        case .display: return [.icon, .text]
+        case .time: return []
+        }
+    }
+
+    func localizedName(for type: MonitorType) -> LocalizedStringKey {
+        switch self {
+        case .icon: return "Label / Icon"
+        case .text:
+            switch type {
+            case .display: return "Resolution Text"
+            case .network: return "Speed Text"
+            default: return "Percentage Text"
+            }
+        case .history: return "History Graph"
+        case .pieChart: return "Pie Chart"
+        case .gauge: return "Arc Gauge"
+        case .barChart: return "Bar Chart"
+        case .coreBars: return "Core Bars"
+        case .capacityBar: return "Capacity Bar"
+        }
+    }
+}
+
+enum MenuBarColor: String, CaseIterable {
+    case auto = "Auto"
+    case red = "Red"
+    case orange = "Orange"
+    case yellow = "Yellow"
+    case green = "Green"
+    case teal = "Teal"
+    case blue = "Blue"
+    case indigo = "Indigo"
+    case purple = "Purple"
+    case pink = "Pink"
+    case graphite = "Graphite"
+
+    /// nil means "Auto": each monitor keeps its own default color
+    var nsColor: NSColor? {
+        switch self {
+        case .auto: return nil
+        case .red: return .systemRed
+        case .orange: return .systemOrange
+        case .yellow: return .systemYellow
+        case .green: return .systemGreen
+        case .teal: return .systemTeal
+        case .blue: return .systemBlue
+        case .indigo: return .systemIndigo
+        case .purple: return .systemPurple
+        case .pink: return .systemPink
+        case .graphite: return .systemGray
+        }
+    }
+
+    var swatchColor: Color {
+        if let nsColor { return Color(nsColor: nsColor) }
+        return .clear
+    }
 }
 
 enum SettingsSelection: Hashable {
@@ -22,7 +96,7 @@ class SettingsNavigationManager: ObservableObject {
 
 struct SettingsView: View {
     @ObservedObject private var nav = SettingsNavigationManager.shared
-    
+
     var body: some View {
         NavigationSplitView {
             List(selection: $nav.selection) {
@@ -30,28 +104,23 @@ struct SettingsView: View {
                     Label {
                         Text("General")
                     } icon: {
-                        Image(systemName: "gearshape")
-                            .foregroundStyle(.gray)
+                        SettingsSidebarIcon(systemName: "gearshape.fill", color: .gray)
                     }
-                    .font(.headline)
-                    .padding(.vertical, 4)
                 }
-                
+
                 Section("Monitors") {
                     ForEach(MonitorType.allCases, id: \.self) { type in
                         NavigationLink(value: SettingsSelection.monitor(type)) {
                             Label {
                                 Text(LocalizedStringKey(type.rawValue))
                             } icon: {
-                                Image(systemName: type.sfSymbolName)
-                                    .foregroundStyle(colorForType(type))
+                                SettingsSidebarIcon(systemName: type.sfSymbolName, color: colorForType(type))
                             }
-                            .font(.headline)
-                            .padding(.vertical, 4)
                         }
                     }
                 }
             }
+            .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 240)
             .navigationTitle("MyStat")
             .listStyle(.sidebar)
         } detail: {
@@ -68,13 +137,13 @@ struct SettingsView: View {
                 }
             } else {
                 Text("Select a category from the sidebar.")
-                    .font(.title)
+                    .font(.title3)
                     .foregroundColor(.secondary)
             }
         }
-        .frame(minWidth: 800, minHeight: 600)
+        .frame(minWidth: 640, minHeight: 460)
     }
-    
+
     private func colorForType(_ type: MonitorType) -> Color {
         switch type {
         case .cpu: return .indigo
@@ -88,6 +157,20 @@ struct SettingsView: View {
     }
 }
 
+/// System Settings-style sidebar icon: white glyph on a colored rounded rectangle
+struct SettingsSidebarIcon: View {
+    let systemName: String
+    let color: Color
+
+    var body: some View {
+        Image(systemName: systemName)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: 21, height: 21)
+            .background(RoundedRectangle(cornerRadius: 5.5).fill(color.gradient))
+    }
+}
+
 struct GeneralSettingsView: View {
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @AppStorage("appLanguage") private var appLanguage = "system"
@@ -95,277 +178,194 @@ struct GeneralSettingsView: View {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
         return "v\(version)"
     }
-    
+
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                Text("General Settings")
-                    .font(.system(size: 28, weight: .bold))
-                
-                Divider()
-                
-                HStack(alignment: .top, spacing: 20) {
-                    VStack(alignment: .leading, spacing: 15) {
-                        Text("System")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                        
-                        GroupBox {
-                            VStack(alignment: .leading, spacing: 15) {
-                                Toggle("Launch MyStat at Login", isOn: $launchAtLogin)
-                                    .onChange(of: launchAtLogin) { newValue in
-                                        do {
-                                            if newValue {
-                                                try SMAppService.mainApp.register()
-                                            } else {
-                                                try SMAppService.mainApp.unregister()
-                                            }
-                                        } catch {
-                                            print("Failed to update launch at login status: \(error)")
-                                            launchAtLogin = SMAppService.mainApp.status == .enabled
-                                        }
-                                    }
-                                    .onAppear {
-                                        launchAtLogin = SMAppService.mainApp.status == .enabled
-                                    }
+        Form {
+            Section("System") {
+                Toggle("Launch MyStat at Login", isOn: $launchAtLogin)
+                    .onChange(of: launchAtLogin) { newValue in
+                        do {
+                            if newValue {
+                                try SMAppService.mainApp.register()
+                            } else {
+                                try SMAppService.mainApp.unregister()
                             }
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 4)
+                        } catch {
+                            print("Failed to update launch at login status: \(error)")
+                            launchAtLogin = SMAppService.mainApp.status == .enabled
                         }
-                        .frame(minWidth: 200, maxWidth: 300)
                     }
-                    
-                    VStack(alignment: .leading, spacing: 15) {
-                        Text("Language")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                        
-                        GroupBox {
-                            Picker("Language", selection: $appLanguage) {
-                                Text("System Default").tag("system")
-                                Text("English").tag("en")
-                                Text("中文").tag("zh-Hant")
-                            }
-                            .pickerStyle(.menu)
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 4)
-                        }
-                        .frame(minWidth: 200, maxWidth: 300)
+                    .onAppear {
+                        launchAtLogin = SMAppService.mainApp.status == .enabled
                     }
+            }
+
+            Section("Language") {
+                Picker("Language", selection: $appLanguage) {
+                    Text("System Default").tag("system")
+                    Text("English").tag("en")
+                    Text("中文").tag("zh-Hant")
                 }
-                
-                Spacer()
-                
-                Divider()
-                
+                .pickerStyle(.menu)
+            }
+
+            Section("About") {
+                LabeledContent("Version", value: "MyStat \(appVersion)")
+
                 HStack {
-                    Text("MyStat \(appVersion)")
-                        .font(.footnote)
-                        .foregroundColor(.secondary)
-                    
+                    Text("Quit MyStat")
                     Spacer()
-                    
-                    Button(action: {
+                    Button(role: .destructive) {
                         NSApplication.shared.terminate(nil)
-                    }) {
-                        Text("Quit MyStat")
+                    } label: {
+                        Text("Quit")
                             .foregroundColor(.red)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
                     }
-                    .buttonStyle(.bordered)
                 }
             }
-            .padding(30)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
+        .formStyle(.grouped)
+        .navigationTitle("General")
     }
 }
 
-// Extract DetailView for cleaner code
+// Settings page for a single monitor
 struct DetailView: View {
     let type: MonitorType
-    
-    // Binding to AppStorage depending on type
-    @AppStorage("showCPU") private var showCPU = true
-    @AppStorage("showMemory") private var showMemory = true
-    @AppStorage("showDisk") private var showDisk = false
-    @AppStorage("showNetwork") private var showNetwork = false
-    @AppStorage("showBattery") private var showBattery = false
-    @AppStorage("showDisplay") private var showDisplay = true
-    
-    @AppStorage("cpuDisplayStyle") private var cpuDisplayStyle = DisplayStyle.icon.rawValue
-    @AppStorage("memoryDisplayStyle") private var memoryDisplayStyle = DisplayStyle.icon.rawValue
-    @AppStorage("diskDisplayStyle") private var diskDisplayStyle = DisplayStyle.icon.rawValue
-    @AppStorage("networkDisplayStyle") private var networkDisplayStyle = DisplayStyle.icon.rawValue
-    @AppStorage("batteryDisplayStyle") private var batteryDisplayStyle = DisplayStyle.text.rawValue
-    @AppStorage("displayDisplayStyle") private var displayDisplayStyle = DisplayStyle.icon.rawValue
+
+    @AppStorage private var isShown: Bool
+    @AppStorage private var styleRaw: String
+    @AppStorage private var showLabel: Bool
+    @AppStorage private var showValue: Bool
+    @AppStorage private var chartColor: String
+    @AppStorage private var secondaryChartColor: String
     @AppStorage("displayUIStyle") private var displayUIStyle = "Glass"
-    
-    @AppStorage("cpuShowLabel") private var cpuShowLabel = false
-    @AppStorage("memoryShowLabel") private var memoryShowLabel = false
-    @AppStorage("diskShowLabel") private var diskShowLabel = false
-    @AppStorage("networkShowLabel") private var networkShowLabel = false
-    @AppStorage("batteryShowLabel") private var batteryShowLabel = false
-    @AppStorage("displayShowLabel") private var displayShowLabel = false
-    
+
     init(for type: MonitorType) {
         self.type = type
+        let key = type.rawValue.lowercased()
+        let defaultShown = (type == .cpu || type == .memory || type == .display)
+        let defaultStyle = (type == .battery ? DisplayStyle.text : DisplayStyle.icon).rawValue
+        _isShown = AppStorage(wrappedValue: defaultShown, "show\(type.rawValue)")
+        _styleRaw = AppStorage(wrappedValue: defaultStyle, "\(key)DisplayStyle")
+        _showLabel = AppStorage(wrappedValue: false, "\(key)ShowLabel")
+        _showValue = AppStorage(wrappedValue: false, "\(key)ShowValue")
+        _chartColor = AppStorage(wrappedValue: MenuBarColor.auto.rawValue, "\(key)ChartColor")
+        _secondaryChartColor = AppStorage(wrappedValue: MenuBarColor.auto.rawValue, "\(key)SecondaryColor")
     }
+
+    private var currentStyle: DisplayStyle {
+        DisplayStyle(rawValue: styleRaw) ?? .icon
+    }
+
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                // Header with big toggle
-                HStack {
-                    let isOn = binding(for: type)
-                    Toggle(isOn: isOn) {
-                        Text(LocalizedStringKey(type.rawValue))
-                            .font(.system(size: 28, weight: .bold))
-                    }
-                    .toggleStyle(.switch)
-                    Spacer()
+        Form {
+            Section {
+                Toggle(isOn: $isShown) {
+                    Text("Show in Menu Bar")
                 }
-                
-                Divider()
-                
-                // Live Preview & Settings Area
-                HStack(alignment: .top, spacing: 20) {
-                    // Left side: Fake live preview of popover
-                    VStack(alignment: .leading) {
-                        Text("Live Preview")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                        
-                        // Render the actual popover view inside a styled container
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 15)
-                                .fill(Color.clear)
-                                .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
-                                
-                            Group {
-                                switch type {
-                                case .cpu: CPUPopoverView()
-                                case .memory: MemoryPopoverView()
-                                case .disk: DiskPopoverView()
-                                case .network: NetworkPopoverView()
-                                case .battery: BatteryPopoverView()
-                                case .display: DisplayPopoverView()
-                                case .time: EmptyView() // Should not be reached
-                                }
-                            }
-                            .clipShape(RoundedRectangle(cornerRadius: 15))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 15)
-                                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                            )
-                        }
-                        .frame(width: 320)
-                        .fixedSize(horizontal: true, vertical: true)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+            }
+
+            Section {
+                Picker("Style", selection: $styleRaw) {
+                    ForEach(DisplayStyle.available(for: type), id: \.rawValue) { style in
+                        Text(style.localizedName(for: type)).tag(style.rawValue)
                     }
-                    
-                    // Right side: Settings controls
-                VStack(alignment: .leading, spacing: 15) {
-                    Text("Menu Bar Layout")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                    
-                    GroupBox {
-                        VStack(alignment: .leading, spacing: 15) {
-                            if type == .display {
-                                Picker("Popover Style", selection: $displayUIStyle) {
-                                    Text("Glassmorphism UI").tag("Glass")
-                                    Text("Native Menu").tag("Classic")
-                                }
-                                .pickerStyle(.menu)
-                                
-                                Divider()
-                            }
-                            
-                            let displayStyleBinding = styleBinding(for: type)
-                            
-                            Picker("Menu Bar Style", selection: displayStyleBinding) {
-                                Text("Label / Icon").tag(DisplayStyle.icon.rawValue)
-                                if type == .display {
-                                    Text("Resolution Text").tag(DisplayStyle.text.rawValue)
-                                } else {
-                                    Text("Percentage Text").tag(DisplayStyle.text.rawValue)
-                                }
-                                
-                                if type != .display && type != .battery {
-                                    Text("History Graph").tag(DisplayStyle.history.rawValue)
-                                    Text("Pie Chart").tag(DisplayStyle.pieChart.rawValue)
-                                    Text("Arc Gauge").tag(DisplayStyle.gauge.rawValue)
-                                    Text("Bar Chart").tag(DisplayStyle.barChart.rawValue)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                            
-                            if type != .display {
-                                Divider()
-                                
-                                let showLabelBinding = labelBinding(for: type)
-                                Toggle("Show text label next to chart", isOn: showLabelBinding)
-                            }
-                        }
-                        .padding(8)
+                }
+                .pickerStyle(.menu)
+
+                if currentStyle.isGraphical {
+                    switch type {
+                    case .network:
+                        ColorSwatchPicker(selection: $chartColor, label: "Download Color")
+                        ColorSwatchPicker(selection: $secondaryChartColor, label: "Upload Color")
+                        Toggle("Show speed text", isOn: $showLabel)
+                    case .disk where currentStyle == .history:
+                        ColorSwatchPicker(selection: $chartColor, label: "Read Color")
+                        ColorSwatchPicker(selection: $secondaryChartColor, label: "Write Color")
+                        Toggle("Show value", isOn: $showValue)
+                        Toggle("Show vertical label", isOn: $showLabel)
+                    default:
+                        ColorSwatchPicker(selection: $chartColor)
+                        Toggle("Show value", isOn: $showValue)
+                        Toggle("Show vertical label", isOn: $showLabel)
                     }
-                    .frame(minWidth: 200, maxWidth: 300)
-                    
-                    HStack(alignment: .top, spacing: 8) {
-                        Image(systemName: "info.circle.fill")
-                            .foregroundColor(.blue)
-                        Text("Hold ⌘ (Command) and drag icons in the menu bar to rearrange them.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                }
+            } header: {
+                Text("Menu Bar Style")
+            } footer: {
+                Label {
+                    Text("Hold ⌘ (Command) and drag icons in the menu bar to rearrange them.")
+                } icon: {
+                    Image(systemName: "info.circle")
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .padding(.top, 4)
+            }
+            .disabled(!isShown)
+
+            if type == .display {
+                Section("Popover") {
+                    Picker("Popover Style", selection: $displayUIStyle) {
+                        Text("Glassmorphism UI").tag("Glass")
+                        Text("Native Menu").tag("Classic")
                     }
-                    .padding(.top, 10)
-                    .frame(minWidth: 200, maxWidth: 300, alignment: .leading)
-                    
-                    Spacer()
+                    .pickerStyle(.menu)
                 }
             }
-            
-            Spacer()
         }
-        .padding(30)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color(NSColor.windowBackgroundColor))
+        .formStyle(.grouped)
+        .navigationTitle(LocalizedStringKey(type.rawValue))
+    }
+}
+
+/// A row of tappable color swatches, iStat-style
+struct ColorSwatchPicker: View {
+    @Binding var selection: String
+    var label: LocalizedStringKey = "Color"
+
+    var body: some View {
+        LabeledContent {
+            HStack(spacing: 7) {
+                ForEach(MenuBarColor.allCases, id: \.rawValue) { color in
+                    swatch(for: color)
+                }
+            }
+        } label: {
+            Text(label)
         }
     }
-    
-    private func binding(for type: MonitorType) -> Binding<Bool> {
-        switch type {
-        case .cpu: return $showCPU
-        case .memory: return $showMemory
-        case .disk: return $showDisk
-        case .network: return $showNetwork
-        case .battery: return $showBattery
-        case .display: return $showDisplay
-        case .time: return .constant(false) // Should not be reached
+
+    @ViewBuilder
+    private func swatch(for color: MenuBarColor) -> some View {
+        let isSelected = selection == color.rawValue
+        ZStack {
+            if color == .auto {
+                Circle()
+                    .fill(AngularGradient(
+                        colors: [.red, .orange, .yellow, .green, .teal, .blue, .purple, .red],
+                        center: .center))
+                    .frame(width: 16, height: 16)
+            } else {
+                Circle()
+                    .fill(color.swatchColor)
+                    .frame(width: 16, height: 16)
+            }
+
+            if isSelected {
+                Circle()
+                    .strokeBorder(Color.primary.opacity(0.8), lineWidth: 1.5)
+                    .frame(width: 21, height: 21)
+            }
         }
-    }
-    
-    private func styleBinding(for type: MonitorType) -> Binding<String> {
-        switch type {
-        case .cpu: return $cpuDisplayStyle
-        case .memory: return $memoryDisplayStyle
-        case .disk: return $diskDisplayStyle
-        case .network: return $networkDisplayStyle
-        case .battery: return $batteryDisplayStyle
-        case .display: return $displayDisplayStyle
-        case .time: return .constant("") // Should not be reached
-        }
-    }
-    
-    private func labelBinding(for type: MonitorType) -> Binding<Bool> {
-        switch type {
-        case .cpu: return $cpuShowLabel
-        case .memory: return $memoryShowLabel
-        case .disk: return $diskShowLabel
-        case .network: return $networkShowLabel
-        case .battery: return $batteryShowLabel
-        case .display: return $displayShowLabel
-        case .time: return .constant(false) // Should not be reached
-        }
+        .frame(width: 22, height: 22)
+        .contentShape(Circle())
+        .onTapGesture { selection = color.rawValue }
+        .help(Text(LocalizedStringKey(color.rawValue)))
+        .accessibilityLabel(Text(LocalizedStringKey(color.rawValue)))
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 }

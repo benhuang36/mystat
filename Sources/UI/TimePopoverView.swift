@@ -22,30 +22,7 @@ struct TimePopoverView: View {
                 VStack(spacing: 12) {
                     // Header Card
                     GlassCard {
-                        HStack {
-                            Label("Time", systemImage: "clock")
-                                .font(.headline)
-                                .foregroundColor(.mint)
-                                .symbolRenderingMode(.hierarchical)
-                            
-                            Spacer()                        
-                            Text(formatTime(date: date, timeZone: .current))
-                                .font(.title3)
-                                .bold()
-                                .monospacedDigit()
-                            
-                            Button(action: {
-                                AppDelegate.shared.openSettings(for: .time)
-                            }) {
-                                Image(systemName: "gearshape.fill")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.secondary)
-                                    .frame(width: 28, height: 28)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .padding(.leading, 8)
-                        }
+                        PopoverHeader(type: .time, value: formatTime(date: date, timeZone: .current))
                     }
                     
                     // Calendar
@@ -98,7 +75,7 @@ struct TimePopoverView: View {
                     }
                 )
             }
-            .frame(width: 320)
+            .frame(width: PopoverStyle.width)
             .frame(height: min(contentHeight, 850))
             .background(VisualEffectView().ignoresSafeArea())
             .preferredColorScheme(.dark)

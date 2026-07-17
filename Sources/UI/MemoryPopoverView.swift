@@ -9,108 +9,51 @@ struct MemoryPopoverView: View {
             // Header & Charts Card
             GlassCard {
                 VStack(spacing: 15) {
-                    HStack {
-                        Label("Memory", systemImage: "memorychip")
-                            .font(.headline)
-                            .foregroundColor(.purple)
-                            .symbolRenderingMode(.hierarchical)
-                        
-                        Spacer()                        
-                        Text(monitor.memoryUsageString)
-                            .font(.title3)
-                            .bold()
-                            .monospacedDigit()
+                    PopoverHeader(type: .memory, value: monitor.memoryUsageString)
 
-                        
-                        Button(action: {
-                            AppDelegate.shared.openSettings(for: .memory)
-                        }) {
-                            Image(systemName: "gearshape.fill")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                                .frame(width: 28, height: 28)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.leading, 8)
-
-                    }
-                    
                     // Circular Charts
                     HStack(spacing: 30) {
-                        StatRing(value: 44, displayValue: "44%", title: "PRESSURE", color: .purple, lineWidth: 6, valueFont: .system(size: 16, weight: .bold), titleFont: .system(size: 9))
+                        let pressureVal = monitor.memoryPressureRatio * 100
+                        StatRing(value: pressureVal, displayValue: "\(Int(pressureVal))%", title: "PRESSURE", color: .purple, lineWidth: 6, valueFont: .system(size: 16, weight: .bold), titleFont: .system(size: 9))
                             .frame(width: 80, height: 80)
-                        
+
                         let memVal = monitor.memoryUsageRatio * 100
                         StatRing(value: memVal, displayValue: "\(Int(memVal))%", title: "MEMORY", color: .cyan, lineWidth: 6, valueFont: .system(size: 16, weight: .bold), titleFont: .system(size: 9))
                             .frame(width: 80, height: 80)
                     }
                     .padding(.vertical, 5)
+                    .frame(maxWidth: .infinity)
                 }
             }
-            
+
             // Breakdown Card
             GlassCard {
                 VStack(spacing: 8) {
-                    HStack {
-                        Circle().fill(Color.purple).frame(width: 8, height: 8)
-                        Text("App Memory")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Text("3.7 GB")
-                            .font(.system(size: 12, weight: .semibold))
-                            .monospacedDigit()
-                    }
-                    HStack {
-                        Circle().fill(Color.cyan).frame(width: 8, height: 8)
-                        Text("Wired Memory")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Text("2.4 GB")
-                            .font(.system(size: 12, weight: .semibold))
-                            .monospacedDigit()
-                    }
-                    HStack {
-                        Circle().fill(Color.orange).frame(width: 8, height: 8)
-                        Text("Swap Used")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Text(monitor.swapUsageString)
-                            .font(.system(size: 12, weight: .semibold))
-                            .monospacedDigit()
-                    }
+                    StatRow(label: "App Memory", value: monitor.appMemoryString, dotColor: .purple)
+                    StatRow(label: "Wired Memory", value: monitor.wiredMemoryString, dotColor: .cyan)
+                    StatRow(label: "Compressed", value: monitor.compressedMemoryString, dotColor: .indigo)
+                    StatRow(label: "Swap Used", value: monitor.swapUsageString, dotColor: .orange)
                 }
             }
-            
+
             // Processes Card
             GlassCard {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("Top Processes", systemImage: "list.dash")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    VStack(spacing: 6) {
-                        ForEach(monitor.topMemoryProcesses) { process in
-                            HStack {
-                                Text(process.name)
-                                    .font(.system(size: 12, weight: .medium))
-                                    .lineLimit(1)
-                                    .truncationMode(.tail)
-                                Spacer()
-                                Text(process.usage)
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .monospacedDigit()
-                            }
-                        }
-                    }
+                    CardSectionHeader(title: "Top Processes")
+
+                    CustomDivider().padding(.vertical, 4)
+
+                    ProcessListView(
+                        rows: monitor.topMemoryProcesses.map {
+                            ProcessRowItem(name: $0.name, value: $0.usage, pid: $0.pid)
+                        },
+                        minRows: 5
+                    )
                 }
             }
         }
         .padding()
-        .frame(width: 320)
+        .frame(width: PopoverStyle.width)
         .background(VisualEffectView().ignoresSafeArea())
         .preferredColorScheme(.dark)
     }

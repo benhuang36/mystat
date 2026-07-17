@@ -9,33 +9,8 @@ struct DiskPopoverView: View {
             // Header & Disk Card
             GlassCard {
                 VStack(spacing: 12) {
-                    HStack {
-                        Label("Disk", systemImage: "internaldrive")
-                            .font(.headline)
-                            .foregroundColor(.cyan)
-                            .symbolRenderingMode(.hierarchical)
-                        
-                        Spacer()                        
-                        Text(monitor.diskFreeString)
-                            .font(.title3)
-                            .bold()
-                            .monospacedDigit()
+                    PopoverHeader(type: .disk, value: monitor.diskFreeString)
 
-                        
-                        Button(action: {
-                            AppDelegate.shared.openSettings(for: .disk)
-                        }) {
-                            Image(systemName: "gearshape.fill")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                                .frame(width: 28, height: 28)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.leading, 8)
-
-                    }
-                    
                     HStack(spacing: 15) {
                         let diskVal = monitor.diskUsageRatio * 100
                         StatRing(value: diskVal, displayValue: "\(Int(diskVal))%", title: "", color: .cyan, lineWidth: 6, valueFont: .system(size: 14, weight: .bold))
@@ -59,7 +34,7 @@ struct DiskPopoverView: View {
                 VStack(spacing: 10) {
                     HStack {
                         VStack(alignment: .leading) {
-                            Text(formatBytes(monitor.diskReadSpeed) + "/s")
+                            Text(ByteFormat.speed(monitor.diskReadSpeed))
                                 .font(.system(size: 14, weight: .bold))
                                 .monospacedDigit()
                             HStack(spacing: 4) {
@@ -69,7 +44,7 @@ struct DiskPopoverView: View {
                         }
                         Spacer()
                         VStack(alignment: .trailing) {
-                            Text(formatBytes(monitor.diskWriteSpeed) + "/s")
+                            Text(ByteFormat.speed(monitor.diskWriteSpeed))
                                 .font(.system(size: 14, weight: .bold))
                                 .monospacedDigit()
                             HStack(spacing: 4) {
@@ -104,72 +79,29 @@ struct DiskPopoverView: View {
             // Processes Card
             GlassCard {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("Top Processes", systemImage: "list.dash")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    VStack(alignment: .leading, spacing: 12) {
-                        // Read
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Top Read")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(.cyan)
-                            
-                            ForEach(monitor.topDiskReadProcesses) { process in
-                                HStack {
-                                    Text(process.name)
-                                        .font(.system(size: 11, weight: .medium))
-                                        .lineLimit(1)
-                                        .truncationMode(.tail)
-                                    Spacer()
-                                    Text(process.usage)
-                                        .font(.system(size: 11, weight: .semibold))
-                                        .monospacedDigit()
-                                }
-                            }
+                    CardSectionHeader(title: "Top Read", systemImage: "arrow.down.circle.fill", color: .cyan)
+
+                    ProcessListView(
+                        rows: monitor.topDiskReadProcesses.map {
+                            ProcessRowItem(name: $0.name, value: $0.usage, pid: $0.pid)
                         }
-                        
-                        CustomDivider()
-                        
-                        // Write
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Top Write")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(.indigo)
-                            
-                            ForEach(monitor.topDiskWriteProcesses) { process in
-                                HStack {
-                                    Text(process.name)
-                                        .font(.system(size: 11, weight: .medium))
-                                        .lineLimit(1)
-                                        .truncationMode(.tail)
-                                    Spacer()
-                                    Text(process.usage)
-                                        .font(.system(size: 11, weight: .semibold))
-                                        .monospacedDigit()
-                                }
-                            }
+                    )
+
+                    CustomDivider().padding(.vertical, 4)
+
+                    CardSectionHeader(title: "Top Write", systemImage: "arrow.up.circle.fill", color: .indigo)
+
+                    ProcessListView(
+                        rows: monitor.topDiskWriteProcesses.map {
+                            ProcessRowItem(name: $0.name, value: $0.usage, pid: $0.pid)
                         }
-                    }
+                    )
                 }
             }
         }
         .padding()
-        .frame(width: 320)
+        .frame(width: PopoverStyle.width)
         .background(VisualEffectView().ignoresSafeArea())
         .preferredColorScheme(.dark)
-    }
-    
-    private func formatBytes(_ bytes: Double) -> String {
-        let kb = bytes / 1024
-        if kb < 1024 {
-            return String(format: "%.1f KB", kb)
-        }
-        let mb = kb / 1024
-        if mb < 1024 {
-            return String(format: "%.1f MB", mb)
-        }
-        let gb = mb / 1024
-        return String(format: "%.1f GB", gb)
     }
 }
