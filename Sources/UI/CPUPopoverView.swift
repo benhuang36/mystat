@@ -6,7 +6,8 @@ struct CPUPopoverView: View {
     
     @StateObject private var hoverManager = HoverManager()
     @StateObject private var tempHoverManager = HoverManager()
-    
+    @State private var hoveredIndex: Int? = nil
+
     var body: some View {
         VStack(spacing: 12) {
             // Header & Chart Card
@@ -22,7 +23,7 @@ struct CPUPopoverView: View {
                             )
                             .foregroundStyle(Color.indigo)
                             .interpolationMethod(.catmullRom)
-                            
+
                             AreaMark(
                                 x: .value("Time", index),
                                 y: .value("Usage", value)
@@ -30,11 +31,54 @@ struct CPUPopoverView: View {
                             .foregroundStyle(LinearGradient(gradient: Gradient(colors: [Color.indigo.opacity(0.8), .clear]), startPoint: .top, endPoint: .bottom))
                             .interpolationMethod(.catmullRom)
                         }
+
+                        if let index = hoveredIndex, monitor.cpuUsageHistory.indices.contains(index) {
+                            RuleMark(x: .value("Time", index))
+                                .foregroundStyle(Color.white.opacity(0.5))
+                                .lineStyle(StrokeStyle(lineWidth: 1, dash: [3]))
+                                .annotation(position: .top) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(PopoverStyle.secondsAgoLabel(max(0, monitor.cpuUsageHistory.count - 1 - index)))
+                                            .font(.system(size: 10, weight: .bold))
+                                        Text(String(format: "%.0f%%", monitor.cpuUsageHistory[index]))
+                                            .font(.system(size: 10))
+                                            .monospacedDigit()
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding(6)
+                                    .background(Color(NSColor.windowBackgroundColor).opacity(0.9))
+                                    .cornerRadius(6)
+                                    .shadow(radius: 2)
+                                }
+                            PointMark(
+                                x: .value("Time", index),
+                                y: .value("Usage", monitor.cpuUsageHistory[index])
+                            )
+                            .foregroundStyle(Color.white)
+                            .symbolSize(30)
+                        }
                     }
                     .chartYScale(domain: 0...100)
                     .chartXAxis(.hidden)
                     .chartYAxis(.hidden)
                     .frame(height: PopoverStyle.chartHeight)
+                    .chartOverlay { proxy in
+                        GeometryReader { geometry in
+                            Rectangle().fill(.clear).contentShape(Rectangle())
+                                .onContinuousHover { phase in
+                                    switch phase {
+                                    case .active(let location):
+                                        let x = location.x - geometry[proxy.plotAreaFrame].origin.x
+                                        if let raw: Double = proxy.value(atX: x) {
+                                            let count = monitor.cpuUsageHistory.count
+                                            hoveredIndex = min(max(0, Int(raw.rounded())), max(0, count - 1))
+                                        }
+                                    case .ended:
+                                        hoveredIndex = nil
+                                    }
+                                }
+                        }
+                    }
 
                     HStack {
                         Circle().fill(Color.indigo).frame(width: 8, height: 8)

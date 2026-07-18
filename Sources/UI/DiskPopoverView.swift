@@ -3,7 +3,14 @@ import Charts
 
 struct DiskPopoverView: View {
     @ObservedObject private var monitor = SystemMonitor.shared
-    
+    @State private var hoveredIndex: Int? = nil
+
+    private func hoveredValue(in history: [Double]) -> Double? {
+        guard let index = hoveredIndex, history.indices.contains(index) else { return nil }
+        return history[index]
+    }
+
+
     var body: some View {
         VStack(spacing: 12) {
             // Header & Disk Card
@@ -53,7 +60,7 @@ struct DiskPopoverView: View {
                             }
                         }
                     }
-                    
+
                     Chart {
                         ForEach(Array(zip(monitor.diskReadHistory.indices, monitor.diskReadHistory)), id: \.0) { index, value in
                             BarMark(
@@ -69,10 +76,59 @@ struct DiskPopoverView: View {
                             )
                             .foregroundStyle(Color.indigo.opacity(0.8))
                         }
+
+                        if let index = hoveredIndex {
+                            RuleMark(x: .value("Time", index))
+                                .foregroundStyle(Color.white.opacity(0.5))
+                                .lineStyle(StrokeStyle(lineWidth: 1, dash: [3]))
+                                .annotation(position: .top) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(PopoverStyle.secondsAgoLabel(max(0, monitor.diskReadHistory.count - 1 - index)))
+                                            .font(.system(size: 10, weight: .bold))
+                                        HStack(spacing: 3) {
+                                            Image(systemName: "arrow.down")
+                                                .font(.system(size: 8, weight: .bold))
+                                                .foregroundColor(.cyan)
+                                            Text(ByteFormat.speed(hoveredValue(in: monitor.diskReadHistory) ?? 0))
+                                                .font(.system(size: 10))
+                                                .monospacedDigit()
+                                        }
+                                        HStack(spacing: 3) {
+                                            Image(systemName: "arrow.up")
+                                                .font(.system(size: 8, weight: .bold))
+                                                .foregroundColor(.indigo)
+                                            Text(ByteFormat.speed(hoveredValue(in: monitor.diskWriteHistory) ?? 0))
+                                                .font(.system(size: 10))
+                                                .monospacedDigit()
+                                        }
+                                    }
+                                    .padding(6)
+                                    .background(Color(NSColor.windowBackgroundColor).opacity(0.9))
+                                    .cornerRadius(6)
+                                    .shadow(radius: 2)
+                                }
+                        }
                     }
                     .chartXAxis(.hidden)
                     .chartYAxis(.hidden)
                     .frame(height: 60)
+                    .chartOverlay { proxy in
+                        GeometryReader { geometry in
+                            Rectangle().fill(.clear).contentShape(Rectangle())
+                                .onContinuousHover { phase in
+                                    switch phase {
+                                    case .active(let location):
+                                        let x = location.x - geometry[proxy.plotAreaFrame].origin.x
+                                        if let raw: Double = proxy.value(atX: x) {
+                                            let count = monitor.diskReadHistory.count
+                                            hoveredIndex = min(max(0, Int(raw.rounded())), max(0, count - 1))
+                                        }
+                                    case .ended:
+                                        hoveredIndex = nil
+                                    }
+                                }
+                        }
+                    }
                 }
             }
             

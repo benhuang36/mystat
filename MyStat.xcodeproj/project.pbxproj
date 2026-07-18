@@ -299,11 +299,13 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 0.2.0;
+				MARKETING_VERSION = 0.3.0;
 				CURRENT_PROJECT_VERSION = 2;
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "MyStat needs access to your calendar to display upcoming events.";
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "MyStat needs full access to your calendar to display upcoming events.";
+				INFOPLIST_KEY_NSLocationUsageDescription = "MyStat needs your location permission to display the current Wi-Fi network name (SSID).";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "MyStat needs your location permission to display the current Wi-Fi network name (SSID).";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -441,11 +443,13 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 0.2.0;
+				MARKETING_VERSION = 0.3.0;
 				CURRENT_PROJECT_VERSION = 2;
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "MyStat needs access to your calendar to display upcoming events.";
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "MyStat needs full access to your calendar to display upcoming events.";
+				INFOPLIST_KEY_NSLocationUsageDescription = "MyStat needs your location permission to display the current Wi-Fi network name (SSID).";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "MyStat needs your location permission to display the current Wi-Fi network name (SSID).";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

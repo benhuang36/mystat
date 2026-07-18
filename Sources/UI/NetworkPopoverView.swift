@@ -4,10 +4,16 @@ import Charts
 struct NetworkPopoverView: View {
     @ObservedObject private var monitor = SystemMonitor.shared
     @ObservedObject private var info = NetworkInfoManager.shared
+    @State private var hoveredIndex: Int? = nil
 
     // Match the menu bar chart defaults: download = cyan, upload = red
     private let downloadColor = Color.cyan
     private let uploadColor = Color.red
+
+    private func hoveredValue(in history: [Double]) -> Double? {
+        guard let index = hoveredIndex, history.indices.contains(index) else { return nil }
+        return history[index]
+    }
 
     var body: some View {
         VStack(spacing: 12) {
@@ -57,14 +63,14 @@ struct NetworkPopoverView: View {
                         dotColor: info.isConnected ? .green : .red
                     )
 
-                    StatRow(label: "IP Address", value: info.localIP)
+                    CopyableValueRow(label: "IP Address", value: info.localIP)
                     if !info.localIPv6.isEmpty {
-                        ipv6Row(info.localIPv6)
+                        CopyableValueRow(value: info.localIPv6, valueFont: NetworkPopoverView.ipv6Font)
                     }
 
-                    StatRow(label: "Public IP", value: info.publicIP)
+                    CopyableValueRow(label: "Public IP", value: info.publicIP)
                     if !info.publicIPv6.isEmpty {
-                        ipv6Row(info.publicIPv6)
+                        CopyableValueRow(value: info.publicIPv6, valueFont: NetworkPopoverView.ipv6Font)
                     }
 
                     StatRow(label: "Ping", value: info.pingString)
@@ -127,17 +133,8 @@ struct NetworkPopoverView: View {
         .preferredColorScheme(.dark)
     }
 
-    /// Long IPv6 address shown right-aligned under its IPv4 row
-    private func ipv6Row(_ address: String) -> some View {
-        HStack {
-            Spacer()
-            Text(address)
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundColor(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-        }
-    }
+    /// Readable monospaced font for full-width IPv6 rows
+    static let ipv6Font = Font.system(size: 11, weight: .medium, design: .monospaced)
 
     private var mirroredChart: some View {
         let downMax = max(1.0, monitor.networkDownloadHistory.max() ?? 1.0)
@@ -162,10 +159,59 @@ struct NetworkPopoverView: View {
             RuleMark(y: .value("Zero", 0))
                 .foregroundStyle(Color.white.opacity(0.25))
                 .lineStyle(StrokeStyle(lineWidth: 1))
+
+            if let index = hoveredIndex {
+                RuleMark(x: .value("Time", index))
+                    .foregroundStyle(Color.white.opacity(0.5))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3]))
+                    .annotation(position: .top) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(PopoverStyle.secondsAgoLabel(max(0, monitor.networkDownloadHistory.count - 1 - index)))
+                                .font(.system(size: 10, weight: .bold))
+                            HStack(spacing: 3) {
+                                Image(systemName: "arrow.down")
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundColor(downloadColor)
+                                Text(ByteFormat.speed(hoveredValue(in: monitor.networkDownloadHistory) ?? 0))
+                                    .font(.system(size: 10))
+                                    .monospacedDigit()
+                            }
+                            HStack(spacing: 3) {
+                                Image(systemName: "arrow.up")
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundColor(uploadColor)
+                                Text(ByteFormat.speed(hoveredValue(in: monitor.networkUploadHistory) ?? 0))
+                                    .font(.system(size: 10))
+                                    .monospacedDigit()
+                            }
+                        }
+                        .padding(6)
+                        .background(Color(NSColor.windowBackgroundColor).opacity(0.9))
+                        .cornerRadius(6)
+                        .shadow(radius: 2)
+                    }
+            }
         }
         .chartYScale(domain: -1.05...1.05)
         .chartXAxis(.hidden)
         .chartYAxis(.hidden)
         .frame(height: 84)
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                Rectangle().fill(.clear).contentShape(Rectangle())
+                    .onContinuousHover { phase in
+                        switch phase {
+                        case .active(let location):
+                            let x = location.x - geometry[proxy.plotAreaFrame].origin.x
+                            if let raw: Double = proxy.value(atX: x) {
+                                let count = monitor.networkDownloadHistory.count
+                                hoveredIndex = min(max(0, Int(raw.rounded())), max(0, count - 1))
+                            }
+                        case .ended:
+                            hoveredIndex = nil
+                        }
+                    }
+            }
+        }
     }
 }

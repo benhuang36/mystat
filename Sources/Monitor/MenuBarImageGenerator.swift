@@ -114,24 +114,30 @@ struct MenuBarImageGenerator {
         return image
     }
     
-    /// Generates an arc/gauge chart
-    static func generateGauge(value: Double, color: NSColor, secondaryValue: Double? = nil, secondaryColor: NSColor? = nil) -> NSImage {
-        let size = NSSize(width: 16, height: 16)
+    /// Generates an arc/gauge chart. With `centerText` the gauge grows to
+    /// 18pt with a thinner ring so the value fits inside the circle.
+    static func generateGauge(value: Double, color: NSColor, secondaryValue: Double? = nil, secondaryColor: NSColor? = nil, centerText: String? = nil) -> NSImage {
+        let hasCenterText = centerText != nil
+        let dimension: CGFloat = hasCenterText ? 18 : 16
+        let size = NSSize(width: dimension, height: dimension)
         let image = NSImage(size: size, flipped: false) { rect in
-            let drawRect = NSRect(x: 2, y: 2, width: 12, height: 12)
+            let inset: CGFloat = 2
+            let drawRect = rect.insetBy(dx: inset, dy: inset)
             let center = NSPoint(x: size.width / 2, y: size.height / 2)
-            
+
             let hasSecondary = secondaryValue != nil
-            
+
             // Outer radius for primary, inner for secondary
             let outerRadius = drawRect.width / 2.0
             let innerRadius = outerRadius - 2.5
             
+            let primaryLineWidth: CGFloat = hasCenterText ? 2 : (hasSecondary ? 2 : 3)
+
             // Background track (outer)
             let trackPath = NSBezierPath()
             trackPath.appendArc(withCenter: center, radius: outerRadius, startAngle: 0, endAngle: 360)
             NSColor.controlTextColor.withAlphaComponent(0.3).setStroke()
-            trackPath.lineWidth = hasSecondary ? 2 : 3
+            trackPath.lineWidth = primaryLineWidth
             trackPath.stroke()
             
             // Background track (inner)
@@ -149,9 +155,30 @@ struct MenuBarImageGenerator {
                 let valPath = NSBezierPath()
                 valPath.appendArc(withCenter: center, radius: outerRadius, startAngle: 90, endAngle: 90 - angle, clockwise: true)
                 color.setStroke()
-                valPath.lineWidth = hasSecondary ? 2 : 3
+                valPath.lineWidth = primaryLineWidth
                 valPath.lineCapStyle = .round
                 valPath.stroke()
+            }
+
+            // Percentage digits centered inside the ring
+            if let centerText {
+                let paragraphStyle = NSMutableParagraphStyle()
+                paragraphStyle.alignment = .center
+                // Three digits ("100") need a slightly smaller font to clear the ring
+                let fontSize: CGFloat = centerText.count >= 3 ? 5.5 : 6.5
+                let attributes: [NSAttributedString.Key: Any] = [
+                    .font: NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .bold),
+                    .foregroundColor: NSColor.controlTextColor,
+                    .paragraphStyle: paragraphStyle
+                ]
+                let attrString = NSAttributedString(string: centerText, attributes: attributes)
+                let textSize = attrString.size()
+                attrString.draw(in: NSRect(
+                    x: center.x - textSize.width / 2,
+                    y: center.y - textSize.height / 2,
+                    width: textSize.width,
+                    height: textSize.height
+                ))
             }
             
             // Value track (inner)
@@ -305,11 +332,11 @@ struct MenuBarImageGenerator {
     }
 
     /// Appends a single-line value text (e.g. "42%") to the right of an image
-    static func addValueText(_ text: String, to image: NSImage) -> NSImage {
+    static func addValueText(_ text: String, to image: NSImage, fontSize: CGFloat = 11) -> NSImage {
         let spacing: CGFloat = 3
 
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium),
+            .font: NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .medium),
             .foregroundColor: NSColor.controlTextColor
         ]
 

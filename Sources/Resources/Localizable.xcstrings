@@ -55,6 +55,16 @@
       }
     },
     "%@°C": {},
+    "%ds ago": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d 秒前"
+          }
+        }
+      }
+    },
     "+%@": {},
     "12 Hour": {
       "extractionState": "stale",
@@ -211,6 +221,16 @@
         }
       }
     },
+    "Battery Drain": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "電量消耗"
+          }
+        }
+      }
+    },
     "Blue": {
       "localizations": {
         "zh-Hant": {
@@ -304,6 +324,16 @@
         }
       }
     },
+    "Click to copy": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "點擊複製"
+          }
+        }
+      }
+    },
     "Color": {
       "localizations": {
         "zh-Hant": {
@@ -320,6 +350,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "已壓縮"
+          }
+        }
+      }
+    },
+    "Copied": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已複製"
           }
         }
       }
@@ -519,6 +559,16 @@
         }
       }
     },
+    "Duration": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "睡眠時長"
+          }
+        }
+      }
+    },
     "Enable Calendar Events": {
       "extractionState": "stale",
       "localizations": {
@@ -579,6 +629,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "格式字串"
+          }
+        }
+      }
+    },
+    "Frequent wake-ups": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "喚醒頻率偏高"
           }
         }
       }
@@ -650,6 +710,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "健康度"
+          }
+        }
+      }
+    },
+    "High sleep drain": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "睡眠耗電偏高"
           }
         }
       }
@@ -896,12 +966,32 @@
         }
       }
     },
+    "Non-Apple wake sources": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第三方喚醒來源"
+          }
+        }
+      }
+    },
     "Not Connected": {
       "localizations": {
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
             "value": "未連線"
+          }
+        }
+      }
+    },
+    "Now": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "剛剛"
           }
         }
       }
@@ -995,6 +1085,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "電源轉換器"
+          }
+        }
+      }
+    },
+    "Preventing Sleep": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在阻止睡眠"
           }
         }
       }
@@ -1237,12 +1337,32 @@
         }
       }
     },
+    "Show value inside gauge": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "數值顯示於圓環內"
+          }
+        }
+      }
+    },
     "Show vertical label": {
       "localizations": {
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
             "value": "顯示直式標籤"
+          }
+        }
+      }
+    },
+    "Sleep Report": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "睡眠報告"
           }
         }
       }
@@ -1462,6 +1582,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "版本"
+          }
+        }
+      }
+    },
+    "Wake-ups": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "喚醒次數"
           }
         }
       }

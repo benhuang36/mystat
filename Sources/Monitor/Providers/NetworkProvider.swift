@@ -1,10 +1,11 @@
 import Foundation
 import SystemConfiguration
 import CoreWLAN
+import CoreLocation
 
 /// Connection details shown in the Network popover (interface, IPs, ping).
 /// Refreshed by SystemMonitor while popovers are open.
-class NetworkInfoManager: ObservableObject {
+class NetworkInfoManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     static let shared = NetworkInfoManager()
 
     @Published var isWiFi = false
@@ -21,6 +22,31 @@ class NetworkInfoManager: ObservableObject {
     private var isPinging = false
     private var lastSSIDFetch: TimeInterval = 0
     private var cachedSSID: String?
+
+    // CoreWLAN only reveals the SSID when the app has Location permission
+    // on modern macOS; ask for it the first time we need the network name.
+    private lazy var locationManager: CLLocationManager = {
+        let manager = CLLocationManager()
+        manager.delegate = self
+        return manager
+    }()
+    private var requestedLocationPermission = false
+
+    private func ensureLocationPermissionForSSID() {
+        guard !requestedLocationPermission else { return }
+        requestedLocationPermission = true
+        if locationManager.authorizationStatus == .notDetermined {
+            locationManager.requestWhenInUseAuthorization()
+        }
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        // Permission just granted (or changed): re-resolve the SSID
+        DispatchQueue.main.async { [weak self] in
+            self?.lastSSIDFetch = 0
+            self?.refreshInterfaceInfo()
+        }
+    }
 
     /// Cheap refresh of interface/IP info + throttled public IP and ping updates
     func refresh() {
@@ -55,12 +81,13 @@ class NetworkInfoManager: ObservableObject {
         let wifiInterface = CWWiFiClient.shared().interface()
         if wifiInterface?.interfaceName == primary {
             isWiFi = true
-            if let ssid = wifiInterface?.ssid() {
+            if let ssid = wifiInterface?.ssid(), Self.isValidSSID(ssid) {
                 connectionName = ssid
                 cachedSSID = ssid
             } else {
                 // On modern macOS CoreWLAN needs Location permission for the
-                // SSID; fall back to command-line tools that still expose it.
+                // SSID: request it, and meanwhile try command-line fallbacks.
+                ensureLocationPermissionForSSID()
                 connectionName = cachedSSID ?? primary
                 resolveSSIDFallback(interface: primary)
             }
@@ -68,6 +95,13 @@ class NetworkInfoManager: ObservableObject {
             isWiFi = false
             connectionName = primary
         }
+    }
+
+    /// Newer macOS prints "<redacted>" instead of the SSID when the caller
+    /// lacks Location permission — never treat that as a network name.
+    private static func isValidSSID(_ candidate: String) -> Bool {
+        let trimmed = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmed.isEmpty && trimmed.lowercased() != "<redacted>"
     }
 
     private func resolveSSIDFallback(interface: String) {
@@ -96,7 +130,7 @@ class NetworkInfoManager: ObservableObject {
                 }
             }
 
-            if let ssid, !ssid.isEmpty {
+            if let ssid, Self.isValidSSID(ssid) {
                 DispatchQueue.main.async {
                     self?.cachedSSID = ssid
                     if self?.isWiFi == true {

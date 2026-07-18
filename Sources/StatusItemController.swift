@@ -212,10 +212,24 @@ class StatusItemController: NSObject {
                 default: symbolName = "battery.100"
                 }
                 
-                guard let baseImage = NSImage(systemSymbolName: symbolName, accessibilityDescription: self.type.rawValue) else {
+                guard let rawImage = NSImage(systemSymbolName: symbolName, accessibilityDescription: self.type.rawValue) else {
                     return nil
                 }
-                
+
+                // Scale so the battery BODY is as tall as the drawn Capacity
+                // Bar battery (11pt). The SF Symbol canvas has padding: the
+                // glyph itself only fills ~82% of the canvas height (measured),
+                // so scale against the glyph, not the canvas.
+                let glyphHeightRatio: CGFloat = 0.82
+                let targetHeight: CGFloat = 11
+                let scaleRatio = targetHeight / (rawImage.size.height * glyphHeightRatio)
+                let scaledSize = NSSize(width: rawImage.size.width * scaleRatio, height: rawImage.size.height * scaleRatio)
+                let baseImage = NSImage(size: scaledSize, flipped: false) { rect in
+                    rawImage.draw(in: rect)
+                    return true
+                }
+                baseImage.isTemplate = true
+
                 if !isCharging {
                     return baseImage
                 }
@@ -250,14 +264,16 @@ class StatusItemController: NSObject {
                     height: boltHeight
                 )
                 
-                let haloRect = NSRect(
-                    x: boltRect.origin.x - 1.5,
-                    y: boltRect.origin.y - 1.5,
-                    width: boltRect.width + 3.0,
-                    height: boltRect.height + 3.0
-                )
-                
-                boltImage.draw(in: haloRect, from: .zero, operation: .destinationOut, fraction: 1.0)
+                // Punch the bolt's silhouette at offsets all around it
+                // (morphological dilation) for an even outline gap — a single
+                // enlarged copy makes the gap wider at points and thinner on flats
+                let haloRadius: CGFloat = 1.3
+                let steps = 12
+                for i in 0..<steps {
+                    let angle = CGFloat(i) / CGFloat(steps) * 2 * .pi
+                    let offsetRect = boltRect.offsetBy(dx: cos(angle) * haloRadius, dy: sin(angle) * haloRadius)
+                    boltImage.draw(in: offsetRect, from: .zero, operation: .destinationOut, fraction: 1.0)
+                }
                 boltImage.draw(in: boltRect, from: .zero, operation: .sourceOver, fraction: 1.0)
                 
                 newImage.unlockFocus()
@@ -373,12 +389,24 @@ class StatusItemController: NSObject {
                 secondaryColor = customSecondary
             }
 
+            let showValue = UserDefaults.standard.bool(forKey: "\(type.rawValue.lowercased())ShowValue")
+            var valueShownInsideGauge = false
+
             if styleRaw == DisplayStyle.history.rawValue {
                 button.image = MenuBarImageGenerator.generateHistoryChart(history: history, color: color, secondaryHistory: secondaryHistory, secondaryColor: secondaryColor)
             } else if styleRaw == DisplayStyle.pieChart.rawValue {
                 button.image = MenuBarImageGenerator.generatePieChart(value: value, color: color, secondaryValue: secondaryValue, secondaryColor: secondaryColor)
             } else if styleRaw == DisplayStyle.gauge.rawValue {
-                button.image = MenuBarImageGenerator.generateGauge(value: value, color: color, secondaryValue: secondaryValue, secondaryColor: secondaryColor)
+                let insideGauge = showValue && secondaryValue == nil
+                    && UserDefaults.standard.bool(forKey: "\(type.rawValue.lowercased())GaugeValueInside")
+                valueShownInsideGauge = insideGauge
+                button.image = MenuBarImageGenerator.generateGauge(
+                    value: value,
+                    color: color,
+                    secondaryValue: secondaryValue,
+                    secondaryColor: secondaryColor,
+                    centerText: insideGauge ? String(format: "%.0f", value) : nil
+                )
             } else if styleRaw == DisplayStyle.barChart.rawValue {
                 button.image = MenuBarImageGenerator.generateBarChart(value: value, color: color, secondaryValue: secondaryValue, secondaryColor: secondaryColor)
             } else if styleRaw == DisplayStyle.coreBars.rawValue {
@@ -389,10 +417,14 @@ class StatusItemController: NSObject {
                 button.image = getSymbolImage()
             }
 
-            // Append current value text (e.g. "42%") if enabled
-            let showValue = UserDefaults.standard.bool(forKey: "\(type.rawValue.lowercased())ShowValue")
-            if showValue && type != .network, let chartImage = button.image {
-                button.image = MenuBarImageGenerator.addValueText(String(format: "%.0f%%", value), to: chartImage)
+            // Append current value text (e.g. "42%") if enabled and not already inside the gauge.
+            // Battery uses menu-bar-sized text to match the Percentage Text style.
+            if showValue && !valueShownInsideGauge && type != .network, let chartImage = button.image {
+                button.image = MenuBarImageGenerator.addValueText(
+                    String(format: "%.0f%%", value),
+                    to: chartImage,
+                    fontSize: type == .battery ? 13 : 11
+                )
             }
             
             // Add label if toggled and not falling back to standard icon

@@ -23,7 +23,7 @@ enum DisplayStyle: String, CaseIterable {
         case .cpu: return [.icon, .text, .history, .coreBars, .barChart, .pieChart, .gauge, .capacityBar]
         case .memory, .disk: return [.icon, .text, .history, .barChart, .pieChart, .gauge, .capacityBar]
         case .network: return [.icon, .text, .history, .barChart, .pieChart, .gauge]
-        case .battery: return [.icon, .text, .capacityBar]
+        case .battery: return [.icon, .text, .capacityBar, .gauge, .pieChart, .barChart]
         case .display: return [.icon, .text]
         case .time: return []
         }
@@ -239,6 +239,7 @@ struct DetailView: View {
     @AppStorage private var showValue: Bool
     @AppStorage private var chartColor: String
     @AppStorage private var secondaryChartColor: String
+    @AppStorage private var gaugeValueInside: Bool
     @AppStorage("displayUIStyle") private var displayUIStyle = "Glass"
 
     init(for type: MonitorType) {
@@ -252,6 +253,7 @@ struct DetailView: View {
         _showValue = AppStorage(wrappedValue: false, "\(key)ShowValue")
         _chartColor = AppStorage(wrappedValue: MenuBarColor.auto.rawValue, "\(key)ChartColor")
         _secondaryChartColor = AppStorage(wrappedValue: MenuBarColor.auto.rawValue, "\(key)SecondaryColor")
+        _gaugeValueInside = AppStorage(wrappedValue: false, "\(key)GaugeValueInside")
     }
 
     private var currentStyle: DisplayStyle {
@@ -290,6 +292,9 @@ struct DetailView: View {
                     default:
                         ColorSwatchPicker(selection: $chartColor)
                         Toggle("Show value", isOn: $showValue)
+                        if currentStyle == .gauge && showValue {
+                            Toggle("Show value inside gauge", isOn: $gaugeValueInside)
+                        }
                         Toggle("Show vertical label", isOn: $showLabel)
                     }
                 }

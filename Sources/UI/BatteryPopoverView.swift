@@ -3,6 +3,7 @@ import Charts
 struct BatteryPopoverView: View {
     @ObservedObject private var monitor = SystemMonitor.shared
     @ObservedObject private var historyManager = BatteryHistoryManager.shared
+    @ObservedObject private var sleepReport = SleepReportManager.shared
     @State private var hoveredDate: Date? = nil
     
     var body: some View {
@@ -191,6 +192,47 @@ struct BatteryPopoverView: View {
                 }
             }
             
+            // Sleep Report Card (last completed sleep session)
+            if let session = sleepReport.lastSession {
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 8) {
+                        CardSectionHeader(title: "Sleep Report", systemImage: "moon.zzz.fill")
+
+                        ForEach(session.anomalies) { anomaly in
+                            anomalyLabel(anomaly)
+                        }
+
+                        CustomDivider().padding(.vertical, 2)
+
+                        StatRow(label: "Duration", value: formatDuration(session.duration))
+                        if let drain = session.drainPercent, let perHour = session.drainPerHour {
+                            StatRow(label: "Battery Drain", value: String(format: "%d%% (%.1f%%/h)", drain, perHour))
+                        }
+                        StatRow(label: "Wake-ups", value: String(format: "%d (%.1f/h)", session.darkWakeCount, session.wakesPerHour))
+                    }
+                }
+            }
+
+            // Sleep Blockers Card (live)
+            if !sleepReport.sleepBlockers.isEmpty {
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 8) {
+                        CardSectionHeader(title: "Preventing Sleep", systemImage: "exclamationmark.triangle.fill", color: .orange)
+
+                        ForEach(sleepReport.sleepBlockers, id: \.self) { name in
+                            HStack(spacing: 6) {
+                                Circle().fill(Color.orange).frame(width: 6, height: 6)
+                                Text(name)
+                                    .font(PopoverStyle.rowLabelFont)
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+                                Spacer()
+                            }
+                        }
+                    }
+                }
+            }
+
             // Health & Details Card
             GlassCard {
                 VStack(spacing: 8) {
@@ -282,6 +324,45 @@ struct BatteryPopoverView: View {
         .frame(width: PopoverStyle.width)
         .background(VisualEffectView().ignoresSafeArea())
         .preferredColorScheme(.dark)
+        .onAppear {
+            SleepReportManager.shared.refresh()
+            SleepReportManager.shared.refreshBlockers()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("PopoverDidOpen"))) { notification in
+            if let typeRaw = notification.object as? String, typeRaw == MonitorType.battery.rawValue {
+                SleepReportManager.shared.refresh()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func anomalyLabel(_ anomaly: SleepAnomaly) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 10))
+                .foregroundColor(.orange)
+            Group {
+                switch anomaly {
+                case .nonAppleSources(let sources):
+                    Text("Non-Apple wake sources") + Text(": \(sources.joined(separator: ", "))")
+                case .frequentWakes(let perHour):
+                    Text("Frequent wake-ups") + Text(String(format: " (%.1f/h)", perHour))
+                case .highDrain(let perHour):
+                    Text("High sleep drain") + Text(String(format: " (%.1f%%/h)", perHour))
+                }
+            }
+            .font(.system(size: 11, weight: .medium))
+            .foregroundColor(.orange)
+            Spacer()
+        }
+    }
+
+    private func formatDuration(_ interval: TimeInterval) -> String {
+        let minutes = Int(interval) / 60
+        if minutes < 60 {
+            return "\(minutes)m"
+        }
+        return "\(minutes / 60)h \(minutes % 60)m"
     }
 
     private func healthColor(for stats: BatteryStats) -> Color {

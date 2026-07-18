@@ -168,6 +168,9 @@ class SystemMonitor: ObservableObject {
             gpuUsage = gpuProvider.getGPUUsage()
             sensorStats = sensorProvider.getSensorStats(cpuUsage: cpuUsage)
             NetworkInfoManager.shared.refresh()
+            if tickCounter % 5 == 0 {
+                SleepReportManager.shared.refreshBlockers()
+            }
         }
         
         // Battery is only needed if the battery menu bar item is visible or popovers are open

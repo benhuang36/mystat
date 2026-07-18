@@ -26,6 +26,14 @@ enum PopoverStyle {
 
     static let rowLabelFont: Font = .system(size: 12, weight: .medium)
     static let rowValueFont: Font = .system(size: 12, weight: .semibold)
+
+    /// Human-friendly label for chart hover tooltips ("Now", "12s ago")
+    static func secondsAgoLabel(_ seconds: Int) -> String {
+        if seconds <= 1 {
+            return NSLocalizedString("Now", comment: "")
+        }
+        return String(format: NSLocalizedString("%ds ago", comment: ""), seconds)
+    }
 }
 
 /// Shared byte-rate formatting (KB/s -> MB/s -> GB/s)
@@ -166,6 +174,63 @@ struct StatRow: View {
                 .monospacedDigit()
                 .foregroundColor(valueColor)
         }
+    }
+}
+
+/// A stat row whose value can be clicked to copy (used for IP addresses).
+/// Without a label the value takes the full row width, right-aligned —
+/// long IPv6 addresses stay readable this way.
+struct CopyableValueRow: View {
+    var label: LocalizedStringKey? = nil
+    let value: String
+    var valueFont: Font = PopoverStyle.rowValueFont
+
+    @State private var copied = false
+    @State private var hovering = false
+
+    private var copyable: Bool {
+        value != "--" && !value.isEmpty
+    }
+
+    var body: some View {
+        HStack {
+            if let label {
+                Text(label)
+                    .font(PopoverStyle.rowLabelFont)
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+
+            HStack(spacing: 5) {
+                // Always reserves its space; hover only toggles opacity so
+                // the layout never shifts (a conditional icon re-layouts the
+                // whole card and makes neighboring scaled text jump).
+                Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                    .font(.system(size: 9, weight: copied ? .bold : .regular))
+                    .foregroundColor(copied ? .green : .secondary)
+                    .frame(width: 12)
+                    .opacity(copied || (hovering && copyable) ? 1 : 0)
+
+                Text(copied ? NSLocalizedString("Copied", comment: "") : value)
+                    .font(valueFont)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                    .foregroundColor(copied ? .green : .primary)
+            }
+        }
+        .contentShape(Rectangle())
+        .onHover { hovering = $0 }
+        .onTapGesture {
+            guard copyable else { return }
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(value, forType: .string)
+            copied = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                copied = false
+            }
+        }
+        .help(copyable ? Text("Click to copy") : Text(""))
     }
 }
 
