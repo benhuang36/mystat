@@ -26,6 +26,8 @@ enum PopoverStyle {
 
     static let rowLabelFont: Font = .system(size: 12, weight: .medium)
     static let rowValueFont: Font = .system(size: 12, weight: .semibold)
+    /// Width of the download/upload columns in the network process list.
+    static let processValueColumnWidth: CGFloat = 56
 
     /// Human-friendly label for chart hover tooltips ("Now", "12s ago")
     static func secondsAgoLabel(_ seconds: Int) -> String {

@@ -86,11 +86,11 @@ struct NetworkPopoverView: View {
                         Image(systemName: "arrow.down")
                             .font(.system(size: 9, weight: .bold))
                             .foregroundColor(downloadColor)
-                            .frame(width: 48, alignment: .trailing)
+                            .frame(width: PopoverStyle.processValueColumnWidth, alignment: .trailing)
                         Image(systemName: "arrow.up")
                             .font(.system(size: 9, weight: .bold))
                             .foregroundColor(uploadColor)
-                            .frame(width: 48, alignment: .trailing)
+                            .frame(width: PopoverStyle.processValueColumnWidth, alignment: .trailing)
                     }
 
                     CustomDivider()
@@ -111,12 +111,16 @@ struct NetworkPopoverView: View {
                                     .font(PopoverStyle.rowValueFont)
                                     .monospacedDigit()
                                     .foregroundColor(.secondary)
-                                    .frame(width: 48, alignment: .trailing)
+                                    .lineLimit(1)
+                                    .frame(minWidth: PopoverStyle.processValueColumnWidth, alignment: .trailing)
+                                    .layoutPriority(1)
                                 Text(ByteFormat.compact(process.uploadSpeed))
                                     .font(PopoverStyle.rowValueFont)
                                     .monospacedDigit()
                                     .foregroundColor(.secondary)
-                                    .frame(width: 48, alignment: .trailing)
+                                    .lineLimit(1)
+                                    .frame(minWidth: PopoverStyle.processValueColumnWidth, alignment: .trailing)
+                                    .layoutPriority(1)
                             }
                             .frame(height: 17)
                         }
