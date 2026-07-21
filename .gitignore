@@ -30,4 +30,16 @@ DerivedData/
 .DS_Store
 
 # Project specific
+# Development memory / working docs — local only, not part of the published repo.
+# Everything except README.md.
 project.md
+AGENTS.md
+ARCHITECTURE.md
+CHANGELOG.md
+CLAUDE.md
+DECISIONS.md
+MEMORY.md
+PLAN.md
+PROGRESS.md
+TASKS.md
+.agents/
