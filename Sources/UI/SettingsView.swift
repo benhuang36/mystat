@@ -86,6 +86,7 @@ enum MenuBarColor: String, CaseIterable {
 
 enum SettingsSelection: Hashable {
     case general
+    case combined
     case monitor(MonitorType)
 }
 
@@ -105,6 +106,14 @@ struct SettingsView: View {
                         Text("General")
                     } icon: {
                         SettingsSidebarIcon(systemName: "gearshape.fill", color: .gray)
+                    }
+                }
+
+                NavigationLink(value: SettingsSelection.combined) {
+                    Label {
+                        Text("Combined Mode")
+                    } icon: {
+                        SettingsSidebarIcon(systemName: "rectangle.split.3x1.fill", color: .teal)
                     }
                 }
 
@@ -128,6 +137,8 @@ struct SettingsView: View {
                 switch selection {
                 case .general:
                     GeneralSettingsView()
+                case .combined:
+                    CombinedSettingsView()
                 case .monitor(let type):
                     if type == .time {
                         TimeSettingsView()
@@ -226,6 +237,92 @@ struct GeneralSettingsView: View {
         }
         .formStyle(.grouped)
         .navigationTitle("General")
+    }
+}
+
+// Settings page for Combined Mode (one status item hosting several monitors)
+struct CombinedSettingsView: View {
+    @AppStorage("combinedModeEnabled") private var combinedEnabled = false
+    @AppStorage("combinedSpacing") private var spacing = 8.0
+    @State private var order: [MonitorType] = CombinedStatusItemController.orderedTypes
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle(isOn: $combinedEnabled) {
+                    Text("Combine into One Item")
+                }
+                .toggleStyle(.switch)
+                .controlSize(.small)
+            } footer: {
+                Label {
+                    Text("Shows the enabled monitors side by side in a single menu bar item. Click a section to open its popover.")
+                } icon: {
+                    Image(systemName: "info.circle")
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .padding(.top, 4)
+            }
+
+            Section("Layout") {
+                Slider(value: $spacing, in: 0...16, step: 1) {
+                    Text("Spacing")
+                } minimumValueLabel: {
+                    Image(systemName: "rectangle.compress.vertical")
+                        .foregroundColor(.secondary)
+                } maximumValueLabel: {
+                    Image(systemName: "rectangle.expand.vertical")
+                        .foregroundColor(.secondary)
+                }
+            }
+            .disabled(!combinedEnabled)
+
+            Section {
+                ForEach(order, id: \.self) { type in
+                    CombinedItemRow(type: type)
+                }
+                .onMove { from, to in
+                    order.move(fromOffsets: from, toOffset: to)
+                    UserDefaults.standard.set(order.map(\.rawValue), forKey: "combinedOrder")
+                }
+            } header: {
+                Text("Items & Order")
+            } footer: {
+                Text("Drag to reorder. Each monitor keeps its own menu bar style and \"Show in Menu Bar\" setting.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.top, 4)
+            }
+            .disabled(!combinedEnabled)
+        }
+        .formStyle(.grouped)
+        .navigationTitle("Combined Mode")
+    }
+}
+
+private struct CombinedItemRow: View {
+    let type: MonitorType
+    @AppStorage private var isShown: Bool
+
+    init(type: MonitorType) {
+        self.type = type
+        _isShown = AppStorage(wrappedValue: type == .cpu || type == .memory, "show\(type.rawValue)")
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+            SettingsSidebarIcon(systemName: type.sfSymbolName, color: .teal)
+            Text(LocalizedStringKey(type.rawValue))
+            Spacer()
+            Toggle("", isOn: $isShown)
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .labelsHidden()
+        }
     }
 }
 

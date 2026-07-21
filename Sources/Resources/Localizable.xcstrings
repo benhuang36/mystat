@@ -344,6 +344,26 @@
         }
       }
     },
+    "Combine into One Item": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "合併為單一選單列項目"
+          }
+        }
+      }
+    },
+    "Combined Mode": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "合併模式"
+          }
+        }
+      }
+    },
     "Compressed": {
       "localizations": {
         "zh-Hant": {
@@ -555,6 +575,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "下載顏色"
+          }
+        }
+      }
+    },
+    "Drag to reorder. Each monitor keeps its own menu bar style and \"Show in Menu Bar\" setting.": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拖曳可調整順序。各監控項沿用自己的選單列樣式與「顯示於選單列」設定。"
           }
         }
       }
@@ -775,6 +805,16 @@
         }
       }
     },
+    "Items & Order": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "項目與順序"
+          }
+        }
+      }
+    },
     "Label / Icon": {
       "localizations": {
         "zh-Hant": {
@@ -802,6 +842,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "登入時自動開啟 MyStat"
+          }
+        }
+      }
+    },
+    "Layout": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "版面"
           }
         }
       }
@@ -1089,6 +1139,16 @@
         }
       }
     },
+    "Power Adapter (%lldW)": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "電源轉換器（%lldW）"
+          }
+        }
+      }
+    },
     "Preventing Sleep": {
       "localizations": {
         "zh-Hant": {
@@ -1357,6 +1417,16 @@
         }
       }
     },
+    "Shows the enabled monitors side by side in a single menu bar item. Click a section to open its popover.": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "將啟用的監控項橫排顯示於單一選單列項目中，點擊個別區段可開啟對應的資訊視窗。"
+          }
+        }
+      }
+    },
     "Sleep Report": {
       "localizations": {
         "zh-Hant": {
@@ -1384,6 +1454,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "空格"
+          }
+        }
+      }
+    },
+    "Spacing": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "間距"
           }
         }
       }

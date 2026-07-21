@@ -229,6 +229,7 @@ struct BatteryStats {
     var cycleCount: Int
     var timeRemaining: Int // in minutes, -1 means calculating
     var health: String
+    var adapterWatts: Int = 0 // rated wattage of the connected power adapter, 0 = unknown/none
 
     var percentage: Double {
         return maxCapacity > 0 ? (capacity / maxCapacity) * 100.0 : 0
@@ -295,6 +296,10 @@ class BatteryProvider {
                     stats.timeRemaining = properties["TimeRemaining"] as? Int ?? -1
                     
                     stats.designCapacity = Double(properties["DesignCapacity"] as? Int ?? 0)
+
+                    if stats.isCharging, let adapter = properties["AdapterDetails"] as? [String: Any] {
+                        stats.adapterWatts = adapter["Watts"] as? Int ?? 0
+                    }
 
                     // Infer health
                     if stats.maxCapacity > 0, stats.designCapacity > 0 {

@@ -26,8 +26,13 @@ struct BatteryPopoverView: View {
                                 .font(PopoverStyle.rowLabelFont)
                                 .foregroundColor(.secondary)
                             Spacer()
-                            Text(LocalizedStringKey(stats.isCharging ? "Power Adapter" : "Battery"))
-                                .font(PopoverStyle.rowValueFont)
+                            if stats.isCharging && stats.adapterWatts > 0 {
+                                Text("Power Adapter (\(stats.adapterWatts)W)")
+                                    .font(PopoverStyle.rowValueFont)
+                            } else {
+                                Text(LocalizedStringKey(stats.isCharging ? "Power Adapter" : "Battery"))
+                                    .font(PopoverStyle.rowValueFont)
+                            }
                         }
 
                         if !stats.isCharging {
