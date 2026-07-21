@@ -22,9 +22,17 @@ class CombinedStatusItemController: NSObject {
         CGFloat(UserDefaults.standard.object(forKey: "combinedSpacing") as? Double ?? 8)
     }
 
+    /// Skips recompositing when no segment's rendered output would differ.
+    private struct CompositeSignature: Equatable {
+        var types: [String]
+        var spacing: CGFloat
+        var segments: [MenuBarRenderSignature]
+    }
+
     private var statusItem: NSStatusItem?
     private var presenters: [MonitorType: MonitorPopoverPresenter] = [:]
     private var segments: [(type: MonitorType, hitRange: ClosedRange<CGFloat>, midX: CGFloat)] = []
+    private var lastSignature: CompositeSignature?
     private var cancellables = Set<AnyCancellable>()
 
     override init() {
@@ -67,6 +75,15 @@ class CombinedStatusItemController: NSObject {
         guard statusItem?.isVisible == true, let button = statusItem?.button else { return }
 
         let types = Self.orderedTypes.filter { UserDefaults.standard.bool(forKey: "show\($0.rawValue)") }
+
+        let signature = CompositeSignature(
+            types: types.map(\.rawValue),
+            spacing: Self.spacing,
+            segments: types.map(MenuBarItemRenderer.signature(for:))
+        )
+        guard signature != lastSignature else { return }
+        lastSignature = signature
+
         let images: [(type: MonitorType, image: NSImage)] = types.compactMap { type in
             MenuBarItemRenderer.segmentImage(for: type).map { (type, $0) }
         }

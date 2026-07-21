@@ -200,10 +200,132 @@ class MonitorPopoverPresenter {
     }
 }
 
+/// Everything that reaches the pixels for one monitor, captured at display
+/// precision. Comparing it against the previous frame lets the controllers skip
+/// both the image generation and the `button.image` assignment (the latter
+/// forces a menu bar relayout even when the image is identical).
+///
+/// Values are deliberately rounded to integers: every menu bar graphic is at
+/// most 18pt tall and the history chart normalizes over a range of 100+, so a
+/// sub-1% change moves the drawing by well under a pixel. Trading that for
+/// skipped redraws is invisible.
+struct MenuBarRenderSignature: Equatable {
+    var style = ""
+    var text = ""
+    var values: [Int] = []
+    var series: [[Int]] = []
+    var options: [String] = []
+}
+
 /// Stateless menu bar image composition for one monitor type, reading the
 /// user's style/color preferences. Shared by the standalone status items and
 /// Combined Mode segments.
 enum MenuBarItemRenderer {
+
+    private static func quantized(_ series: [Double]) -> [Int] {
+        series.map { Int($0.rounded()) }
+    }
+
+    static func displayResolutionText() -> String {
+        if let mainDisplay = DisplayManager.shared.displays.first(where: { $0.isMain }) ?? DisplayManager.shared.displays.first,
+           let mode = mainDisplay.currentMode {
+            return " \(mode.width)x\(mode.height)"
+        }
+        return " Display"
+    }
+
+    /// Captures only the inputs the *current style* actually draws from, so e.g.
+    /// a Gauge is not invalidated by the history buffer shifting underneath it.
+    static func signature(for type: MonitorType) -> MenuBarRenderSignature {
+        let monitor = SystemMonitor.shared
+        let defaults = UserDefaults.standard
+        let key = type.rawValue.lowercased()
+        var sig = MenuBarRenderSignature()
+
+        // Time renders straight to the button title and must stay live. The
+        // rendered string *is* the signature: a new second always lands, an
+        // identical one was a no-op anyway.
+        if type == .time {
+            sig.style = "Time"
+            sig.text = TimeFormatHelper.shared.generateTimeString()
+            return sig
+        }
+
+        let style = defaults.string(forKey: "\(key)DisplayStyle") ?? DisplayStyle.icon.rawValue
+        sig.style = style
+
+        if type == .display {
+            sig.options.append(defaults.string(forKey: "displayUIStyle") ?? "Glass")
+        }
+
+        // The battery symbol backs both Icon Only and Text, and changes with the
+        // charge bucket and the charging bolt.
+        if type == .battery {
+            let stats = monitor.batteryStats
+            sig.values.append(Int(stats.percentage.rounded()))
+            sig.options.append(stats.isCharging ? "charging" : "onBattery")
+        }
+
+        if style == DisplayStyle.icon.rawValue {
+            return sig // a static symbol; battery already accounted for above
+        }
+
+        if style == DisplayStyle.text.rawValue {
+            switch type {
+            case .cpu: sig.values.append(Int(monitor.cpuUsage.rounded()))
+            case .memory: sig.values.append(Int((monitor.memoryUsageRatio * 100).rounded()))
+            case .disk: sig.values.append(Int((monitor.diskUsageRatio * 100).rounded()))
+            case .network: sig.text = networkSpeedText()
+            case .display: sig.text = displayResolutionText()
+            case .battery, .time: break
+            }
+            return sig
+        }
+
+        // Graphical styles: colors and toggles are baked into the image
+        sig.options.append(defaults.string(forKey: "\(key)ChartColor") ?? MenuBarColor.auto.rawValue)
+        sig.options.append(defaults.string(forKey: "\(key)SecondaryColor") ?? MenuBarColor.auto.rawValue)
+        sig.options.append(defaults.bool(forKey: "\(key)ShowValue") ? "value" : "")
+        sig.options.append(defaults.bool(forKey: "\(key)GaugeValueInside") ? "inside" : "")
+
+        let showLabel = defaults.bool(forKey: "\(key)ShowLabel")
+        sig.options.append(showLabel ? "label" : "")
+        if showLabel && type == .network {
+            sig.text = networkSpeedText()
+        }
+
+        if style == DisplayStyle.coreBars.rawValue {
+            sig.series.append(quantized(monitor.cpuCoreUsages))
+            return sig
+        }
+
+        if style == DisplayStyle.history.rawValue {
+            switch type {
+            case .cpu: sig.series.append(quantized(monitor.cpuUsageHistory))
+            case .memory: sig.series.append(quantized(monitor.memoryUsageHistory))
+            case .disk:
+                sig.series.append(quantized(monitor.diskReadHistory))
+                sig.series.append(quantized(monitor.diskWriteHistory))
+            case .network:
+                sig.series.append(quantized(monitor.networkDownloadHistory))
+                sig.series.append(quantized(monitor.networkUploadHistory))
+            case .battery, .time, .display: break
+            }
+            return sig
+        }
+
+        // Value-driven charts: pie / gauge / bar / capacity bar
+        switch type {
+        case .cpu: sig.values.append(Int(monitor.cpuUsage.rounded()))
+        case .memory: sig.values.append(Int((monitor.memoryUsageRatio * 100).rounded()))
+        case .disk: sig.values.append(Int((monitor.diskUsageRatio * 100).rounded()))
+        case .network:
+            sig.values.append(Int(min(100, (monitor.networkDownloadSpeed / 1024 / 10000.0) * 100.0).rounded()))
+            sig.values.append(Int(min(100, (monitor.networkUploadSpeed / 1024 / 10000.0) * 100.0).rounded()))
+        case .battery, .time, .display: break
+        }
+        return sig
+    }
 
     static func networkSpeedText() -> String {
         let formatSpeed: (Double) -> String = { bytes in
@@ -469,6 +591,7 @@ class StatusItemController: NSObject {
     private lazy var presenter = MonitorPopoverPresenter(type: type)
 
     private var classicMenuBuilder: DisplayMenuBuilder?
+    private var lastSignature: MenuBarRenderSignature?
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -578,9 +701,23 @@ class StatusItemController: NSObject {
         }
     }
 
+    /// Skips the redraw when nothing visible changed. The stats publishers fire
+    /// every tick regardless of whether the rendered output would differ, and
+    /// assigning `button.image` forces a menu bar relayout each time — for a
+    /// static Icon Only item that is pure waste. Cached NSImages still track
+    /// light/dark mode on their own: the generators draw inside an
+    /// `NSImage(size:flipped:)` handler that re-runs on appearance changes.
     @objc private func updateButtonUI() {
         guard let button = statusItem?.button else { return }
 
+        let signature = MenuBarItemRenderer.signature(for: type)
+        guard signature != lastSignature else { return }
+        lastSignature = signature
+
+        render(signature, into: button)
+    }
+
+    private func render(_ signature: MenuBarRenderSignature, into button: NSStatusBarButton) {
         if type == .display {
             let uiStyle = UserDefaults.standard.string(forKey: "displayUIStyle") ?? "Glass"
             if uiStyle == "Classic" {
@@ -600,7 +737,7 @@ class StatusItemController: NSObject {
         if type == .time {
             button.image = nil
             button.attributedTitle = NSAttributedString(string: "")
-            button.title = TimeFormatHelper.shared.generateTimeString()
+            button.title = signature.text // already generated for the signature
             return
         }
 
@@ -629,12 +766,7 @@ class StatusItemController: NSObject {
             case .time:
                 break // Handled above
             case .display:
-                if let mainDisplay = DisplayManager.shared.displays.first(where: { $0.isMain }) ?? DisplayManager.shared.displays.first,
-                   let mode = mainDisplay.currentMode {
-                    button.title = " \(mode.width)x\(mode.height)"
-                } else {
-                    button.title = " Display"
-                }
+                button.title = MenuBarItemRenderer.displayResolutionText()
             }
         } else {
             // Graphical Modes
