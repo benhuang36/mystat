@@ -132,12 +132,17 @@ class ProcessProvider {
                 
                 let readBytes = rusageResult == 0 ? rusage.ri_diskio_bytesread : 0
                 let writeBytes = rusageResult == 0 ? rusage.ri_diskio_byteswritten : 0
-                
+
+                // Activity Monitor's "Memory" column is phys_footprint, not RSS: it counts
+                // the process's compressed pages and IOKit/GPU mappings, and excludes clean
+                // shared file-backed pages. Fall back to RSS only if rusage is unavailable.
+                let memoryBytes = rusageResult == 0 ? rusage.ri_phys_footprint : taskInfo.pti_resident_size
+
                 allProcs.append(ProcData(
                     pid: pid,
                     name: name,
                     cpuUsage: cpuUsagePercent,
-                    memoryBytes: taskInfo.pti_resident_size,
+                    memoryBytes: memoryBytes,
                     diskRead: readBytes,
                     diskWrite: writeBytes
                 ))

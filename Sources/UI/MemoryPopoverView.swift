@@ -32,6 +32,7 @@ struct MemoryPopoverView: View {
                     StatRow(label: "App Memory", value: monitor.appMemoryString, dotColor: .purple)
                     StatRow(label: "Wired Memory", value: monitor.wiredMemoryString, dotColor: .cyan)
                     StatRow(label: "Compressed", value: monitor.compressedMemoryString, dotColor: .indigo)
+                    StatRow(label: "Cached Files", value: monitor.cachedFilesString, dotColor: .green)
                     StatRow(label: "Swap Used", value: monitor.swapUsageString, dotColor: .orange)
                 }
             }

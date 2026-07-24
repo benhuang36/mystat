@@ -262,6 +262,16 @@
         }
       }
     },
+    "Cached Files": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快取的檔案"
+          }
+        }
+      }
+    },
     "Calculating...": {
       "localizations": {
         "zh-Hant": {

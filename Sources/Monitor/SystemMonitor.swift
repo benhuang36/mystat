@@ -12,6 +12,7 @@ class SystemMonitor: ObservableObject {
     @Published var memoryUsageString: String = "-- GB"
     @Published var swapUsageString: String = ""
     @Published var appMemoryString: String = "--"
+    @Published var cachedFilesString: String = "--"
     @Published var wiredMemoryString: String = "--"
     @Published var compressedMemoryString: String = "--"
     @Published var memoryPressureRatio: Double = 0.0
@@ -110,7 +111,7 @@ class SystemMonitor: ObservableObject {
         
         if hasActivePopovers || showMemory {
             let memStats = memoryProvider.getMemoryStats()
-            let usedMemGB = Double(memStats.wired + memStats.active + memStats.compressed) / (1024 * 1024 * 1024)
+            let usedMemGB = Double(memStats.used) / (1024 * 1024 * 1024)
             let totalMemGB = Double(memStats.total) / (1024 * 1024 * 1024)
             memoryUsageString = String(format: "%.1f GB / %.1f GB", usedMemGB, totalMemGB)
             
@@ -118,7 +119,8 @@ class SystemMonitor: ObservableObject {
             swapUsageString = String(format: "%.1f GB", swapUsedGB)
 
             let gb = 1024.0 * 1024.0 * 1024.0
-            appMemoryString = String(format: "%.1f GB", Double(memStats.active) / gb)
+            appMemoryString = String(format: "%.1f GB", Double(memStats.app) / gb)
+            cachedFilesString = String(format: "%.1f GB", Double(memStats.cached) / gb)
             wiredMemoryString = String(format: "%.1f GB", Double(memStats.wired) / gb)
             compressedMemoryString = String(format: "%.1f GB", Double(memStats.compressed) / gb)
             // Approximation of macOS memory pressure: wired + compressed vs total
