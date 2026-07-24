@@ -417,6 +417,24 @@ struct MenuBarImageGenerator {
         return newImage
     }
     
+    /// High-water mark of the speed text width, in points. Only ever grows
+    /// while the app runs; `resetSpeedTextWidth()` clears it.
+    private static var speedTextWidthHighWater: CGFloat = 0
+
+    private static func speedTextWidthMark(for width: CGFloat) -> CGFloat {
+        // Round up so sub-point metric noise doesn't creep the width upward.
+        let rounded = width.rounded(.up)
+        if rounded > speedTextWidthHighWater {
+            speedTextWidthHighWater = rounded
+        }
+        return speedTextWidthHighWater
+    }
+
+    /// Called when the network item is (re)created, so a fresh item starts narrow again.
+    static func resetSpeedTextWidth() {
+        speedTextWidthHighWater = 0
+    }
+
     static func addSpeedText(_ text: String, to image: NSImage) -> NSImage {
         let spacing: CGFloat = 4
         
@@ -434,11 +452,12 @@ struct MenuBarImageGenerator {
         
         let attrString = NSAttributedString(string: text, attributes: attributes)
         let textSize = attrString.size()
-        
-        // Ensure minimum width to prevent jumping
-        let minTextWidth: CGFloat = 45.0
-        let actualTextWidth = max(textSize.width, minTextWidth)
-        
+
+        // Ratchet width: start as narrow as the text needs, grow when a longer
+        // reading arrives, never shrink back — so the item stops twitching once
+        // it has seen the widest value, without reserving room up front.
+        let actualTextWidth = max(speedTextWidthMark(for: textSize.width), textSize.width)
+
         // Menu bar height is exactly 22.0. Let's use 22.0 to avoid any internal clipping
         let totalHeight: CGFloat = 22.0
         let newSize = NSSize(width: image.size.width + spacing + actualTextWidth, height: totalHeight)

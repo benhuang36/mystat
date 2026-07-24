@@ -606,6 +606,10 @@ class StatusItemController: NSObject {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem?.autosaveName = "MyStat_\(type.rawValue)"
 
+        if type == .network {
+            MenuBarImageGenerator.resetSpeedTextWidth()
+        }
+
         if let button = statusItem?.button {
             button.action = #selector(togglePopover(_:))
             button.target = self
