@@ -688,21 +688,33 @@ class StatusItemController: NSObject {
         timeTimerCancellable?.cancel()
         lastTimerModeHasSeconds = hasSeconds
 
-        if hasSeconds {
-            let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in self?.updateButtonUI() }
-            RunLoop.main.add(timer, forMode: .common)
-            timeTimerCancellable = AnyCancellable { timer.invalidate() }
-        } else {
-            let now = Date()
-            let calendar = Calendar.current
-            let nextMinute = calendar.nextDate(after: now, matching: DateComponents(second: 0), matchingPolicy: .nextTime) ?? now.addingTimeInterval(60)
+        scheduleNextTimeTick(hasSeconds: hasSeconds)
+        self.updateButtonUI()
+    }
 
-            let timer = Timer(fire: nextMinute, interval: 60.0, repeats: true) { [weak self] _ in self?.updateButtonUI() }
-            RunLoop.main.add(timer, forMode: .common)
-            timeTimerCancellable = AnyCancellable { timer.invalidate() }
+    /// Schedules a single tick at the next wall-clock boundary, re-anchored from
+    /// the live clock on every fire. A plain repeating `Timer` is dangerous here:
+    /// its fire dates are spaced by elapsed time, not re-checked against the wall
+    /// clock, so NTP slew / sleep drift / timer slop can leave it firing a hair
+    /// *before* the true `:00`. When that happens `generateTimeString()` reads the
+    /// old minute, the signature gate (identical text) drops the redraw, and every
+    /// later +60s fire stays just-early too — locking the menu bar a permanent
+    /// minute behind. Re-anchoring each tick makes that self-heal, and the small
+    /// epsilon guarantees the formatted string has already rolled to the new unit.
+    private func scheduleNextTimeTick(hasSeconds: Bool) {
+        let interval: TimeInterval = hasSeconds ? 1.0 : 60.0
+        let epsilon: TimeInterval = 0.05
+        let ref = Date().timeIntervalSinceReferenceDate
+        let nextBoundary = (floor(ref / interval) + 1) * interval
+        let fireDate = Date(timeIntervalSinceReferenceDate: nextBoundary + epsilon)
 
+        let timer = Timer(fire: fireDate, interval: 0, repeats: false) { [weak self] _ in
+            guard let self = self else { return }
             self.updateButtonUI()
+            self.scheduleNextTimeTick(hasSeconds: hasSeconds)
         }
+        RunLoop.main.add(timer, forMode: .common)
+        timeTimerCancellable = AnyCancellable { timer.invalidate() }
     }
 
     /// Skips the redraw when nothing visible changed. The stats publishers fire
