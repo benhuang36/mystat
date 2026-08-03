@@ -46,6 +46,11 @@ class CustomPopoverPanel: NSPanel {
 class MonitorPopoverPresenter {
     let type: MonitorType
     private var panel: CustomPopoverPanel?
+    // Kept alive across open/close so reopening is instant. While closed we swap
+    // its rootView to an empty view (see close()) so the popover's SwiftUI body
+    // stops observing SystemMonitor's per-second stats and no longer re-renders
+    // off-screen — the source of idle CPU when a popover had been opened once.
+    private var hostingController: NSHostingController<AnyView>?
     private var eventMonitor: Any?
     private var globalEventMonitor: Any?
     private var isFadingOut = false
@@ -78,6 +83,20 @@ class MonitorPopoverPresenter {
 
     var isShown: Bool { panel?.isVisible ?? false }
 
+    /// Builds the popover's SwiftUI root for this monitor type. Called on first
+    /// show and on every reopen (close() swaps in an empty view in between).
+    private func makeRootView() -> AnyView {
+        switch type {
+        case .cpu: return AnyView(RootEnvironmentView { CPUPopoverView() })
+        case .memory: return AnyView(RootEnvironmentView { MemoryPopoverView() })
+        case .disk: return AnyView(RootEnvironmentView { DiskPopoverView() })
+        case .network: return AnyView(RootEnvironmentView { NetworkPopoverView() })
+        case .battery: return AnyView(RootEnvironmentView { BatteryPopoverView() })
+        case .time: return AnyView(RootEnvironmentView { TimePopoverView() })
+        case .display: return AnyView(RootEnvironmentView { DisplayPopoverView() })
+        }
+    }
+
     /// `segmentMidX`: horizontal center of the clicked segment in the anchor
     /// button's coordinates (Combined Mode); nil centers on the whole button.
     func toggle(anchor: NSStatusBarButton, segmentMidX: CGFloat? = nil) {
@@ -97,20 +116,18 @@ class MonitorPopoverPresenter {
         anchorButton = anchor
 
         if panel == nil {
-            let view: AnyView
-            switch type {
-            case .cpu: view = AnyView(RootEnvironmentView { CPUPopoverView() })
-            case .memory: view = AnyView(RootEnvironmentView { MemoryPopoverView() })
-            case .disk: view = AnyView(RootEnvironmentView { DiskPopoverView() })
-            case .network: view = AnyView(RootEnvironmentView { NetworkPopoverView() })
-            case .battery: view = AnyView(RootEnvironmentView { BatteryPopoverView() })
-            case .time: view = AnyView(RootEnvironmentView { TimePopoverView() })
-            case .display: view = AnyView(RootEnvironmentView { DisplayPopoverView() })
-            }
-
-            let hostingController = NSHostingController(rootView: view)
-            hostingController.view.setFrameSize(hostingController.view.fittingSize)
-            panel = CustomPopoverPanel(contentView: hostingController.view)
+            let hosting = NSHostingController(rootView: makeRootView())
+            hosting.view.setFrameSize(hosting.view.fittingSize)
+            hostingController = hosting
+            panel = CustomPopoverPanel(contentView: hosting.view)
+        } else if let hosting = hostingController {
+            // Re-attach the live view (close() had blanked it) so it observes
+            // stats and lays out again before we show the window. Blanking may
+            // have shrunk the hidden window, so resize it back synchronously
+            // here so the positioning math below reads the correct frame.
+            hosting.rootView = makeRootView()
+            hosting.view.layoutSubtreeIfNeeded()
+            panel?.setContentSize(hosting.view.fittingSize)
         }
 
         if let window = panel {
@@ -177,7 +194,11 @@ class MonitorPopoverPresenter {
                 window.animator().alphaValue = 0.0
             }, completionHandler: { [weak self] in
                 window.orderOut(nil)
-                // Keep the panel alive for future use to avoid rendering delay
+                // Keep the panel alive for future use to avoid rendering delay,
+                // but blank its rootView so the popover's SwiftUI body stops
+                // observing SystemMonitor's per-second stats and no longer
+                // re-renders while off-screen (idle-CPU fix). show() re-attaches.
+                self?.hostingController?.rootView = AnyView(EmptyView())
                 self?.isFadingOut = false
                 SystemMonitor.shared.activePopoversCount = max(0, SystemMonitor.shared.activePopoversCount - 1)
                 self?.removeEventMonitors()
