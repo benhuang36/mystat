@@ -24,7 +24,6 @@ struct DisplayPopoverView: View {
             }
         }
         .frame(width: PopoverStyle.width)
-        .background(VisualEffectView(cornerRadius: 12).ignoresSafeArea())
     }
 }
 
@@ -72,13 +71,15 @@ struct DisplaySection: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                 if display.isMain {
+                    // Solid accent fill + white text: a tinted fill with accent
+                    // text washed out over some wallpapers behind the material.
                     Text("Main")
                         .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(MonitorType.display.accentColor)
+                        .foregroundColor(.white)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 1)
                         .background(
-                            Capsule().fill(MonitorType.display.accentColor.opacity(0.18))
+                            Capsule().fill(MonitorType.display.accentColor)
                         )
                 }
                 Spacer(minLength: 0)

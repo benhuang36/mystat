@@ -80,6 +80,9 @@ struct CustomDivider: View {
     }
 }
 
+/// The popover corner radius, used by the window material mask.
+let popoverCornerRadius: CGFloat = 12
+
 // MARK: - Single-surface popover shell
 //
 // Every popover is one frosted surface: a title strip, then content blocks
@@ -96,7 +99,6 @@ struct PopoverContainer<Content: View>: View {
             content
         }
         .frame(width: PopoverStyle.width)
-        .background(VisualEffectView(cornerRadius: 12).ignoresSafeArea())
     }
 }
 

@@ -17,12 +17,12 @@ class CustomPopoverPanel: NSPanel {
         self.titlebarAppearsTransparent = true
 
         let visualEffect = NSVisualEffectView()
-        visualEffect.material = .popover
+        visualEffect.material = .menu
         visualEffect.state = .active
         visualEffect.blendingMode = .behindWindow
-        // Round the material with a mask image; a behind-window material is
-        // not clipped by layer.cornerRadius/masksToBounds.
-        visualEffect.roundedMask(cornerRadius: 12)
+        // Mask the material to rounded corners (a behind-window material is not
+        // clipped by layer.cornerRadius), which removes the square color block.
+        visualEffect.roundedMask(cornerRadius: popoverCornerRadius)
 
         contentView.translatesAutoresizingMaskIntoConstraints = false
         visualEffect.addSubview(contentView)

@@ -70,7 +70,6 @@ struct TimePopoverView: View {
             }
             .frame(width: PopoverStyle.width)
             .frame(height: min(contentHeight, 850))
-            .background(VisualEffectView(cornerRadius: 12).ignoresSafeArea())
             .onAppear {
                 calendarSelectedDate = Date()
             }
