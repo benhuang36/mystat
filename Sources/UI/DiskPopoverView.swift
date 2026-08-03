@@ -80,7 +80,7 @@ struct DiskPopoverView: View {
 
                         if let index = hoveredIndex {
                             RuleMark(x: .value("Time", index))
-                                .foregroundStyle(Color.white.opacity(0.5))
+                                .foregroundStyle(Color.primary.opacity(0.4))
                                 .lineStyle(StrokeStyle(lineWidth: 1, dash: [3]))
                                 .annotation(position: .top) {
                                     VStack(alignment: .leading, spacing: 2) {

@@ -167,11 +167,11 @@ struct CustomCalendarView: View {
                                     if event.isAllDay {
                                         Text("All Day")
                                             .font(.system(size: 11, weight: .medium))
-                                            .foregroundColor(.white.opacity(0.7))
+                                            .foregroundColor(.secondary)
                                     } else {
                                         Text("\(formatEventTime(event.startDate)) - \(formatEventTime(event.endDate))")
                                             .font(.system(size: 11, weight: .medium))
-                                            .foregroundColor(.white.opacity(0.7))
+                                            .foregroundColor(.secondary)
                                     }
                                 }
                             }
@@ -180,7 +180,7 @@ struct CustomCalendarView: View {
                         if eventManager.eventsForSelectedDate.count > 4 {
                             (Text("+\(eventManager.eventsForSelectedDate.count - 4)") + Text(" more events"))
                                 .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(.white.opacity(0.7))
+                                .foregroundColor(.secondary)
                                 .padding(.leading, 16)
                         }
                     }

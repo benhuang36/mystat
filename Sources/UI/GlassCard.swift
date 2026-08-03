@@ -73,7 +73,9 @@ enum ByteFormat {
 struct CustomDivider: View {
     var body: some View {
         Rectangle()
-            .fill(Color.white.opacity(0.15))
+            // System separator color: appearance-aware (subtle dark line on
+            // light, subtle light line on dark) and tuned for vibrant material.
+            .fill(Color(nsColor: .separatorColor))
             .frame(height: 1)
     }
 }
@@ -94,8 +96,7 @@ struct PopoverContainer<Content: View>: View {
             content
         }
         .frame(width: PopoverStyle.width)
-        .background(VisualEffectView().ignoresSafeArea())
-        .preferredColorScheme(.dark)
+        .background(VisualEffectView(cornerRadius: 12).ignoresSafeArea())
     }
 }
 
@@ -152,10 +153,16 @@ struct PopoverHeader: View {
 
     var body: some View {
         HStack {
-            Label(LocalizedStringKey(type.rawValue), systemImage: systemImageOverride ?? type.sfSymbolName)
-                .font(.headline)
-                .foregroundColor(accentOverride ?? type.accentColor)
-                .symbolRenderingMode(.hierarchical)
+            // Accent color on the icon (per-monitor identity), but the title
+            // text stays `.primary` so it's readable on any material/wallpaper.
+            HStack(spacing: 6) {
+                Image(systemName: systemImageOverride ?? type.sfSymbolName)
+                    .foregroundColor(accentOverride ?? type.accentColor)
+                    .symbolRenderingMode(.hierarchical)
+                Text(LocalizedStringKey(type.rawValue))
+                    .foregroundColor(.primary)
+            }
+            .font(.headline)
 
             Spacer()
 
@@ -188,9 +195,16 @@ struct CardSectionHeader: View {
     var color: Color = .secondary
 
     var body: some View {
-        Label(title, systemImage: systemImage)
-            .font(.caption)
-            .foregroundColor(color)
+        // Color identity stays on the icon; the label text is `.secondary` so
+        // it stays readable on a translucent surface (a colored caption washes
+        // out over a dark wallpaper in light mode).
+        HStack(spacing: 4) {
+            Image(systemName: systemImage)
+                .foregroundColor(color)
+            Text(title)
+                .foregroundColor(.secondary)
+        }
+        .font(.caption)
     }
 }
 

@@ -20,9 +20,9 @@ class CustomPopoverPanel: NSPanel {
         visualEffect.material = .popover
         visualEffect.state = .active
         visualEffect.blendingMode = .behindWindow
-        visualEffect.wantsLayer = true
-        visualEffect.layer?.cornerRadius = 12
-        visualEffect.layer?.masksToBounds = true
+        // Round the material with a mask image; a behind-window material is
+        // not clipped by layer.cornerRadius/masksToBounds.
+        visualEffect.roundedMask(cornerRadius: 12)
 
         contentView.translatesAutoresizingMaskIntoConstraints = false
         visualEffect.addSubview(contentView)

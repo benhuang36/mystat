@@ -42,7 +42,7 @@ struct TimePopoverView: View {
                                         .font(.system(size: 13, weight: .semibold))
                                     Text(formatTime(date: date, timeZone: tz))
                                         .font(.system(size: 11, weight: .medium))
-                                        .foregroundColor(.white.opacity(0.7))
+                                        .foregroundColor(.secondary)
                                 }
                                 Spacer()
 
@@ -70,8 +70,7 @@ struct TimePopoverView: View {
             }
             .frame(width: PopoverStyle.width)
             .frame(height: min(contentHeight, 850))
-            .background(VisualEffectView().ignoresSafeArea())
-            .preferredColorScheme(.dark)
+            .background(VisualEffectView(cornerRadius: 12).ignoresSafeArea())
             .onAppear {
                 calendarSelectedDate = Date()
             }

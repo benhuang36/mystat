@@ -24,8 +24,7 @@ struct DisplayPopoverView: View {
             }
         }
         .frame(width: PopoverStyle.width)
-        .background(VisualEffectView().ignoresSafeArea())
-        .preferredColorScheme(.dark)
+        .background(VisualEffectView(cornerRadius: 12).ignoresSafeArea())
     }
 }
 

@@ -35,7 +35,7 @@ struct CPUPopoverView: View {
 
                         if let index = hoveredIndex, monitor.cpuUsageHistory.indices.contains(index) {
                             RuleMark(x: .value("Time", index))
-                                .foregroundStyle(Color.white.opacity(0.5))
+                                .foregroundStyle(Color.primary.opacity(0.4))
                                 .lineStyle(StrokeStyle(lineWidth: 1, dash: [3]))
                                 .annotation(position: .top) {
                                     VStack(alignment: .leading, spacing: 2) {
@@ -55,7 +55,7 @@ struct CPUPopoverView: View {
                                 x: .value("Time", index),
                                 y: .value("Usage", monitor.cpuUsageHistory[index])
                             )
-                            .foregroundStyle(Color.white)
+                            .foregroundStyle(Color.primary)
                             .symbolSize(30)
                         }
                     }
@@ -189,7 +189,9 @@ struct StatRing: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Color.gray.opacity(0.2), lineWidth: lineWidth)
+                // Appearance-aware track: a fixed light gray nearly vanishes on
+                // a translucent surface over a dark desktop in light mode.
+                .stroke(Color.secondary.opacity(0.3), lineWidth: lineWidth)
             Circle()
                 .trim(from: 0, to: CGFloat(value / 100.0))
                 .stroke(
@@ -246,7 +248,7 @@ struct CPUCorePopoverView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("CPU Cores")
                 .font(.headline)
-                .foregroundColor(.white)
+                .foregroundColor(.primary)
             
             LazyVGrid(columns: Array(repeating: GridItem(.fixed(40), spacing: 8), count: columnCount), spacing: 8) {
                 ForEach(0..<coreUsages.count, id: \.self) { index in
@@ -258,7 +260,7 @@ struct CPUCorePopoverView: View {
                         GeometryReader { geometry in
                             ZStack(alignment: .bottom) {
                                 RoundedRectangle(cornerRadius: 2)
-                                    .fill(Color.white.opacity(0.1))
+                                    .fill(Color.primary.opacity(0.1))
                                 
                                 RoundedRectangle(cornerRadius: 2)
                                     .fill(
@@ -275,7 +277,7 @@ struct CPUCorePopoverView: View {
                         
                         Text("\(Int(coreUsages[index]))%")
                             .font(.system(size: 9, weight: .bold))
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                             .monospacedDigit()
                     }
                     .frame(width: 40)
@@ -317,7 +319,7 @@ struct TempSensorsPopoverView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Temperatures")
                 .font(.headline)
-                .foregroundColor(.white)
+                .foregroundColor(.primary)
             
             VStack(spacing: 8) {
                 if stats.cpuTemperature > 0 {
@@ -362,7 +364,7 @@ struct TempRow: View {
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 2)
-                        .fill(Color.white.opacity(0.1))
+                        .fill(Color.primary.opacity(0.1))
                     
                     RoundedRectangle(cornerRadius: 2)
                         .fill(
@@ -379,7 +381,7 @@ struct TempRow: View {
             
             Text("\(Int(value))°C")
                 .font(.system(size: 11, weight: .bold))
-                .foregroundColor(.white)
+                .foregroundColor(.primary)
                 .monospacedDigit()
                 .frame(width: 35, alignment: .trailing)
         }
