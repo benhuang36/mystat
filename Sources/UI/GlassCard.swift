@@ -70,38 +70,73 @@ enum ByteFormat {
 
 // MARK: - Containers
 
-struct GlassCard<Content: View>: View {
-    let content: Content
-
-    init(@ViewBuilder content: () -> Content) {
-        self.content = content()
-    }
-
-    var body: some View {
-        content
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
-            .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(Color(NSColor.windowBackgroundColor).opacity(0.4))
-            )
-            // Clip content/background to the card shape so that during an
-            // expand/collapse height animation the content is revealed from a
-            // fixed top edge instead of overflowing above the card boundary.
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
-            )
-            .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 2)
-    }
-}
-
 struct CustomDivider: View {
     var body: some View {
         Rectangle()
             .fill(Color.white.opacity(0.15))
             .frame(height: 1)
+    }
+}
+
+// MARK: - Single-surface popover shell
+//
+// Every popover is one frosted surface: a title strip, then content blocks
+// separated by full-width `CustomDivider()` hairlines — no nested cards.
+// Stack children directly inside `PopoverContainer`, inserting a
+// `CustomDivider()` between each `PopoverTitleBar` / `PopoverSection`.
+
+/// Outer shell: fixed width, single frosted background, dark scheme.
+struct PopoverContainer<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(spacing: 0) {
+            content
+        }
+        .frame(width: PopoverStyle.width)
+        .background(VisualEffectView().ignoresSafeArea())
+        .preferredColorScheme(.dark)
+    }
+}
+
+/// Title strip at the top of a popover: accent icon + optional value + gear.
+struct PopoverTitleBar: View {
+    let type: MonitorType
+    var value: String? = nil
+    var systemImageOverride: String? = nil
+    var accentOverride: Color? = nil
+
+    var body: some View {
+        PopoverHeader(
+            type: type,
+            value: value,
+            systemImageOverride: systemImageOverride,
+            accentOverride: accentOverride
+        )
+        .padding(.horizontal, 16)
+        .padding(.top, 14)
+        .padding(.bottom, 12)
+    }
+}
+
+/// A content block with the standard section insets. Content is left-aligned;
+/// center anything (rings, charts) with its own `.frame(maxWidth: .infinity)`.
+struct PopoverSection<Content: View>: View {
+    var spacing: CGFloat = 8
+    @ViewBuilder let content: Content
+
+    init(spacing: CGFloat = 8, @ViewBuilder content: () -> Content) {
+        self.spacing = spacing
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: spacing) {
+            content
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }
 

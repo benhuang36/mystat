@@ -9,12 +9,13 @@ struct CPUPopoverView: View {
     @State private var hoveredIndex: Int? = nil
 
     var body: some View {
-        VStack(spacing: 12) {
-            // Header & Chart Card
-            GlassCard {
-                VStack(alignment: .leading, spacing: 8) {
-                    PopoverHeader(type: .cpu, value: String(format: "%.0f%%", monitor.cpuUsage))
+        PopoverContainer {
+            PopoverTitleBar(type: .cpu, value: String(format: "%.0f%%", monitor.cpuUsage))
 
+            CustomDivider()
+
+            // Chart + legend (hover reveals per-core usage)
+            PopoverSection {
                     Chart {
                         ForEach(Array(monitor.cpuUsageHistory.enumerated()), id: \.offset) { index, value in
                             LineMark(
@@ -93,7 +94,6 @@ struct CPUPopoverView: View {
                             .foregroundColor(.secondary)
                             .monospacedDigit()
                     }
-                }
             }
             .contentShape(Rectangle())
             .onHover { hovering in
@@ -113,41 +113,41 @@ struct CPUPopoverView: View {
                         }
                     }
             }
-            
-            // Processes Card
-            GlassCard {
-                VStack(alignment: .leading, spacing: 8) {
-                    CardSectionHeader(title: "Top Processes")
 
-                    CustomDivider().padding(.vertical, 4)
+            CustomDivider()
 
-                    ProcessListView(
-                        rows: monitor.topCPUProcesses.map { process in
-                            ProcessRowItem(
-                                name: process.name,
-                                value: "\(process.usage)%",
-                                valueColor: (Double(process.usage) ?? 0) > 20 ? .orange : .primary,
-                                pid: process.pid
-                            )
-                        },
-                        minRows: 5
-                    )
-                }
+            // Top processes
+            PopoverSection {
+                CardSectionHeader(title: "Top Processes")
+
+                ProcessListView(
+                    rows: monitor.topCPUProcesses.map { process in
+                        ProcessRowItem(
+                            name: process.name,
+                            value: "\(process.usage)%",
+                            valueColor: (Double(process.usage) ?? 0) > 20 ? .orange : .primary,
+                            pid: process.pid
+                        )
+                    },
+                    minRows: 5
+                )
             }
-            
-            // Sensors Card
-            GlassCard {
+
+            CustomDivider()
+
+            // Sensors
+            PopoverSection {
                 HStack(spacing: 20) {
                     StatRing(value: monitor.gpuUsage, displayValue: "\(Int(monitor.gpuUsage))%", title: "GPU", color: .indigo)
                         .frame(width: 50, height: 50)
-                    
+
                     // Display Fan speed RPM
                     let rpm = Int(monitor.sensorStats.fanSpeed)
                     if rpm > 0 {
                         StatRing(value: min(100, (monitor.sensorStats.fanSpeed / 5000.0) * 100.0), displayValue: "\(rpm)", title: "FAN", color: .cyan)
                             .frame(width: 50, height: 50)
                     }
-                    
+
                     // Temp display
                     let temp = Int(monitor.sensorStats.cpuTemperature)
                     StatRing(value: min(100, monitor.sensorStats.cpuTemperature), displayValue: "\(temp)°", title: "TMP", color: .orange)
@@ -174,10 +174,6 @@ struct CPUPopoverView: View {
                 .frame(maxWidth: .infinity)
             }
         }
-        .padding()
-        .frame(width: PopoverStyle.width)
-        .background(VisualEffectView().ignoresSafeArea())
-        .preferredColorScheme(.dark)
     }
 }
 

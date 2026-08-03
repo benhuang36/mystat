@@ -19,53 +19,46 @@ struct TimePopoverView: View {
         TimelineView(.periodic(from: .now, by: 1.0)) { timeline in
             let date = timeline.date
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 12) {
-                    // Header Card
-                    GlassCard {
-                        PopoverHeader(type: .time, value: formatTime(date: date, timeZone: .current))
-                    }
-                    
+                VStack(spacing: 0) {
+                    PopoverTitleBar(type: .time, value: formatTime(date: date, timeZone: .current))
+
+                    CustomDivider()
+
                     // Calendar
-                    GlassCard {
+                    PopoverSection {
                         CustomCalendarView(date: $calendarSelectedDate)
                     }
-                    
-                    // World Clocks
-                    GlassCard {
-                        VStack(spacing: 8) {
-                            ForEach(clockManager.clocks.indices, id: \.self) { index in
-                                let clock = clockManager.clocks[index]
-                                let tz = clock.timeZone
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(clock.name)
-                                            .font(.system(size: 13, weight: .semibold))
-                                        Text(formatTime(date: date, timeZone: tz))
-                                            .font(.system(size: 11, weight: .medium))
-                                            .foregroundColor(.white.opacity(0.7))
-                                    }
-                                    Spacer()
-                                    
-                                    // Time difference indicator
-                                    if !timeDifferenceString(to: tz).isEmpty {
-                                        Text(timeDifferenceString(to: tz))
-                                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                                            .foregroundColor(.white)
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 4)
-                                            .background(Capsule().fill(Color.blue.opacity(0.7)))
-                                    }
+
+                    CustomDivider()
+
+                    // World clocks
+                    PopoverSection {
+                        ForEach(clockManager.clocks.indices, id: \.self) { index in
+                            let clock = clockManager.clocks[index]
+                            let tz = clock.timeZone
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(clock.name)
+                                        .font(.system(size: 13, weight: .semibold))
+                                    Text(formatTime(date: date, timeZone: tz))
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.7))
                                 }
-                                
-                                if index < clockManager.clocks.count - 1 {
-                                    CustomDivider()
+                                Spacer()
+
+                                // Time difference indicator
+                                if !timeDifferenceString(to: tz).isEmpty {
+                                    Text(timeDifferenceString(to: tz))
+                                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 8)
                                         .padding(.vertical, 4)
+                                        .background(Capsule().fill(Color.blue.opacity(0.7)))
                                 }
                             }
                         }
                     }
                 }
-                .padding()
                 .background(
                     GeometryReader { geo -> Color in
                         DispatchQueue.main.async {

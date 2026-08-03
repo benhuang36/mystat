@@ -16,16 +16,14 @@ struct NetworkPopoverView: View {
     }
 
     var body: some View {
-        VStack(spacing: 12) {
-            // Header Card
-            GlassCard {
-                PopoverHeader(type: .network)
-            }
+        PopoverContainer {
+            PopoverTitleBar(type: .network)
 
-            // Combined Traffic Card
-            GlassCard {
-                VStack(spacing: 10) {
-                    HStack {
+            CustomDivider()
+
+            // Combined traffic
+            PopoverSection(spacing: 10) {
+                HStack {
                         VStack(alignment: .leading) {
                             Text(ByteFormat.speed(monitor.networkDownloadSpeed))
                                 .font(.system(size: 14, weight: .bold))
@@ -50,38 +48,38 @@ struct NetworkPopoverView: View {
                     // Mirrored chart: download grows up, upload grows down.
                     // Each direction is normalized to its own peak so the
                     // quieter direction stays readable.
-                    mirroredChart
-                }
+                mirroredChart
             }
 
-            // Connection Info Card
-            GlassCard {
-                VStack(spacing: 8) {
-                    StatRow(
-                        label: info.isWiFi ? "Wi-Fi" : "Ethernet",
-                        value: info.isConnected ? info.connectionName : NSLocalizedString("Not Connected", comment: ""),
-                        dotColor: info.isConnected ? .green : .red
-                    )
+            CustomDivider()
 
-                    CopyableValueRow(label: "IP Address", value: info.localIP)
-                    if !info.localIPv6.isEmpty {
-                        CopyableValueRow(value: info.localIPv6, valueFont: NetworkPopoverView.ipv6Font)
-                    }
+            // Connection info
+            PopoverSection {
+                StatRow(
+                    label: info.isWiFi ? "Wi-Fi" : "Ethernet",
+                    value: info.isConnected ? info.connectionName : NSLocalizedString("Not Connected", comment: ""),
+                    dotColor: info.isConnected ? .green : .red
+                )
 
-                    CopyableValueRow(label: "Public IP", value: info.publicIP)
-                    if !info.publicIPv6.isEmpty {
-                        CopyableValueRow(value: info.publicIPv6, valueFont: NetworkPopoverView.ipv6Font)
-                    }
-
-                    StatRow(label: "Ping", value: info.pingString)
+                CopyableValueRow(label: "IP Address", value: info.localIP)
+                if !info.localIPv6.isEmpty {
+                    CopyableValueRow(value: info.localIPv6, valueFont: NetworkPopoverView.ipv6Font)
                 }
+
+                CopyableValueRow(label: "Public IP", value: info.publicIP)
+                if !info.publicIPv6.isEmpty {
+                    CopyableValueRow(value: info.publicIPv6, valueFont: NetworkPopoverView.ipv6Font)
+                }
+
+                StatRow(label: "Ping", value: info.pingString)
             }
 
-            // Combined Processes Card (iStat-style: one list, two columns)
-            GlassCard {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        CardSectionHeader(title: "Processes")
+            CustomDivider()
+
+            // Combined processes (iStat-style: one list, two columns)
+            PopoverSection {
+                HStack {
+                    CardSectionHeader(title: "Processes")
                         Spacer()
                         Image(systemName: "arrow.down")
                             .font(.system(size: 9, weight: .bold))
@@ -92,8 +90,6 @@ struct NetworkPopoverView: View {
                             .foregroundColor(uploadColor)
                             .frame(width: PopoverStyle.processValueColumnWidth, alignment: .trailing)
                     }
-
-                    CustomDivider()
 
                     VStack(spacing: 6) {
                         ForEach(monitor.topNetworkProcesses) { process in
@@ -128,13 +124,8 @@ struct NetworkPopoverView: View {
                             HStack { Spacer() }.frame(height: 17)
                         }
                     }
-                }
             }
         }
-        .padding()
-        .frame(width: PopoverStyle.width)
-        .background(VisualEffectView().ignoresSafeArea())
-        .preferredColorScheme(.dark)
     }
 
     /// Readable monospaced font for full-width IPv6 rows

@@ -9,17 +9,18 @@ struct BatteryPopoverView: View {
     var body: some View {
         let stats = monitor.batteryStats
         
-        VStack(spacing: 12) {
-            // Header & Info Card
-            GlassCard {
-                VStack(spacing: 12) {
-                    PopoverHeader(
-                        type: .battery,
-                        value: String(format: "%.0f%%", stats.percentage),
-                        systemImageOverride: stats.isCharging ? "battery.100.bolt" : "battery.100",
-                        accentOverride: stats.isCharging ? .green : .mint
-                    )
+        PopoverContainer {
+            PopoverTitleBar(
+                type: .battery,
+                value: String(format: "%.0f%%", stats.percentage),
+                systemImageOverride: stats.isCharging ? "battery.100.bolt" : "battery.100",
+                accentOverride: stats.isCharging ? .green : .mint
+            )
 
+            CustomDivider()
+
+            // Source / time remaining
+            PopoverSection {
                     VStack(spacing: 8) {
                         HStack {
                             Text("Source")
@@ -56,20 +57,21 @@ struct BatteryPopoverView: View {
                         }
                     }
                 }
-            }
-            
-            // 24-Hour History Chart
+
+            // 24-hour history chart
             let history = historyManager.history
             if history.count > 1 {
-                GlassCard {
-                    VStack(alignment: .leading, spacing: 8) {
+                CustomDivider()
+
+                PopoverSection {
                         HStack {
                             Label("History (Last 24 Hours)", systemImage: "clock.fill")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             Spacer()
                         }
-                        
+                        .padding(.bottom, 6)
+
                         let segmentedHistory: [(point: BatteryDataPoint, segmentID: Int)] = {
                             var result: [(BatteryDataPoint, Int)] = []
                             var currentSegmentID = 0
@@ -194,34 +196,32 @@ struct BatteryPopoverView: View {
                         }
                         .padding(.top, 4)
                     }
-                }
             }
-            
-            // Sleep Report Card (last completed sleep session)
+
+            // Sleep report (last completed sleep session)
             if let session = sleepReport.lastSession {
-                GlassCard {
-                    VStack(alignment: .leading, spacing: 8) {
+                CustomDivider()
+
+                PopoverSection {
                         CardSectionHeader(title: "Sleep Report", systemImage: "moon.zzz.fill")
 
                         ForEach(session.anomalies) { anomaly in
                             anomalyLabel(anomaly)
                         }
 
-                        CustomDivider().padding(.vertical, 2)
-
                         StatRow(label: "Duration", value: formatDuration(session.duration))
                         if let drain = session.drainPercent, let perHour = session.drainPerHour {
                             StatRow(label: "Battery Drain", value: String(format: "%d%% (%.1f%%/h)", drain, perHour))
                         }
                         StatRow(label: "Wake-ups", value: String(format: "%d (%.1f/h)", session.darkWakeCount, session.wakesPerHour))
-                    }
                 }
             }
 
-            // Sleep Blockers Card (live)
+            // Sleep blockers (live)
             if !sleepReport.sleepBlockers.isEmpty {
-                GlassCard {
-                    VStack(alignment: .leading, spacing: 8) {
+                CustomDivider()
+
+                PopoverSection {
                         CardSectionHeader(title: "Preventing Sleep", systemImage: "exclamationmark.triangle.fill", color: .orange)
 
                         ForEach(sleepReport.sleepBlockers, id: \.self) { name in
@@ -234,13 +234,13 @@ struct BatteryPopoverView: View {
                                 Spacer()
                             }
                         }
-                    }
                 }
             }
 
-            // Health & Details Card
-            GlassCard {
-                VStack(spacing: 8) {
+            CustomDivider()
+
+            // Health & details
+            PopoverSection {
                     HStack {
                         Text("Health")
                             .font(.system(size: 12, weight: .medium))
@@ -267,8 +267,6 @@ struct BatteryPopoverView: View {
                             .font(.system(size: 12, weight: .semibold))
                             .monospacedDigit()
                     }
-
-                    Divider()
 
                     HStack {
                         Text("Battery Charge")
@@ -302,15 +300,15 @@ struct BatteryPopoverView: View {
                         }
                     }
                 }
-            }
-            
-            // Energy Impact Card
-            GlassCard {
-                VStack(alignment: .leading, spacing: 8) {
+
+            CustomDivider()
+
+            // Energy impact
+            PopoverSection {
                     Label("Energy Impact", systemImage: "bolt.fill")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    
+
                     if monitor.topPowerProcesses.isEmpty {
                         Text("Calculating...")
                             .font(.system(size: 12))
@@ -322,13 +320,8 @@ struct BatteryPopoverView: View {
                             }
                         )
                     }
-                }
             }
         }
-        .padding()
-        .frame(width: PopoverStyle.width)
-        .background(VisualEffectView().ignoresSafeArea())
-        .preferredColorScheme(.dark)
         .onAppear {
             SleepReportManager.shared.refresh()
             SleepReportManager.shared.refreshBlockers()
