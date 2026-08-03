@@ -876,6 +876,16 @@
         }
       }
     },
+    "Main": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主螢幕"
+          }
+        }
+      }
+    },
     "Memory": {
       "extractionState": "stale",
       "localizations": {
@@ -1255,6 +1265,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "更新率"
+          }
+        }
+      }
+    },
+    "Resolution": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "解析度"
           }
         }
       }

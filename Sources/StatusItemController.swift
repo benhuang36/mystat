@@ -52,6 +52,15 @@ class MonitorPopoverPresenter {
     private weak var anchorButton: NSStatusBarButton?
     private var cancellables = Set<AnyCancellable>()
 
+    // The panel auto-resizes to fit its SwiftUI content (e.g. expanding the
+    // Display resolution list). An AppKit window keeps its bottom-left origin
+    // fixed on resize, so it would grow upward and drag the top-pinned content
+    // with it. We instead pin the panel's TOP edge (just below the status item)
+    // and reposition on every resize so it grows downward, keeping content still.
+    private var frameObserver: NSObjectProtocol?
+    private var pinnedTopY: CGFloat?
+    private var pinnedX: CGFloat?
+
     init(type: MonitorType) {
         self.type = type
 
@@ -122,6 +131,24 @@ class MonitorPopoverPresenter {
 
             window.setFrameOrigin(NSPoint(x: xPos, y: yPos))
 
+            // Pin the top edge so later content-driven resizes grow downward.
+            pinnedX = xPos
+            pinnedTopY = yPos + window.frame.height
+            if frameObserver == nil {
+                frameObserver = NotificationCenter.default.addObserver(
+                    forName: NSWindow.didResizeNotification, object: window, queue: .main
+                ) { [weak self] _ in
+                    guard let self = self,
+                          let window = self.panel,
+                          let topY = self.pinnedTopY,
+                          let x = self.pinnedX else { return }
+                    let newY = topY - window.frame.height
+                    if abs(window.frame.origin.y - newY) > 0.5 || abs(window.frame.origin.x - x) > 0.5 {
+                        window.setFrameOrigin(NSPoint(x: x, y: newY))
+                    }
+                }
+            }
+
             window.alphaValue = 0.0
             window.makeKeyAndOrderFront(nil)
             NotificationCenter.default.post(name: NSNotification.Name("PopoverDidOpen"), object: type.rawValue)
@@ -189,6 +216,10 @@ class MonitorPopoverPresenter {
     }
 
     private func removeEventMonitors() {
+        if let observer = frameObserver {
+            NotificationCenter.default.removeObserver(observer)
+            frameObserver = nil
+        }
         if let monitor = globalEventMonitor {
             NSEvent.removeMonitor(monitor)
             globalEventMonitor = nil

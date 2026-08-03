@@ -80,11 +80,15 @@ struct GlassCard<Content: View>: View {
     var body: some View {
         content
             .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
             .background(
                 RoundedRectangle(cornerRadius: 14)
                     .fill(Color(NSColor.windowBackgroundColor).opacity(0.4))
             )
+            // Clip content/background to the card shape so that during an
+            // expand/collapse height animation the content is revealed from a
+            // fixed top edge instead of overflowing above the card boundary.
+            .clipShape(RoundedRectangle(cornerRadius: 14))
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
                     .stroke(Color.white.opacity(0.15), lineWidth: 0.5)

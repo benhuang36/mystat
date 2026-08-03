@@ -2,44 +2,44 @@ import SwiftUI
 
 struct DisplayPopoverView: View {
     @ObservedObject var displayManager = DisplayManager.shared
-    @State private var expandedDisplayId: CGDirectDisplayID?
-    
+
     var body: some View {
-        VStack(spacing: 12) {
-            // Header Card
-            GlassCard {
-                PopoverHeader(type: .display)
-            }
-            
+        VStack(spacing: 0) {
+            PopoverHeader(type: .display)
+                .padding(.horizontal, 16)
+                .padding(.top, 14)
+                .padding(.bottom, 12)
+
             if displayManager.displays.isEmpty {
                 Text("No Displays Found")
+                    .font(.system(size: 13))
                     .foregroundColor(.secondary)
-                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 28)
             } else {
-                ForEach(displayManager.displays) { display in
-                    DisplayCard(display: display, isExpanded: Binding(
-                        get: { self.expandedDisplayId == display.id },
-                        set: { if $0 { self.expandedDisplayId = display.id } else if self.expandedDisplayId == display.id { self.expandedDisplayId = nil } }
-                    ))
+                ForEach(Array(displayManager.displays.enumerated()), id: \.element.id) { index, display in
+                    CustomDivider()
+                    DisplaySection(display: display)
                 }
             }
         }
-        .padding()
         .frame(width: PopoverStyle.width)
         .background(VisualEffectView().ignoresSafeArea())
         .preferredColorScheme(.dark)
     }
 }
 
-struct DisplayCard: View {
+/// One display's controls: name + Main badge, then Resolution and Refresh Rate
+/// as native menu pickers. No expand/collapse — the section is fixed height.
+struct DisplaySection: View {
     @ObservedObject var display: DisplayInfo
-    @Binding var isExpanded: Bool
-    
-    var uniqueResolutions: [DisplayModeInfo] {
+
+    /// Unique resolutions (deduped across refresh rate / duplicate modes).
+    private var uniqueResolutions: [DisplayModeInfo] {
         var res = [DisplayModeInfo]()
         var seen = Set<String>()
         for mode in display.availableModes {
-            let key = "\(mode.width)x\(mode.height)-\(mode.isHiDPI)"
+            let key = resolutionKey(width: mode.width, height: mode.height, isHiDPI: mode.isHiDPI)
             if !seen.contains(key) {
                 seen.insert(key)
                 res.append(mode)
@@ -47,124 +47,101 @@ struct DisplayCard: View {
         }
         return res
     }
-    
-    var availableRefreshRates: [Double] {
+
+    /// Refresh rates available for the currently selected resolution.
+    private var availableRefreshRates: [Double] {
         guard let current = display.currentMode else { return [] }
         let rates = display.availableModes
             .filter { $0.width == current.width && $0.height == current.height && $0.isHiDPI == current.isHiDPI }
             .map { round($0.refreshRate) }
         return Array(Set(rates)).sorted(by: >)
     }
-    
+
+    private func resolutionKey(width: Int, height: Int, isHiDPI: Bool) -> String {
+        "\(width)x\(height)-\(isHiDPI)"
+    }
+
     var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 10) {
-                // Header
-                Button(action: {
-                    withAnimation {
-                        isExpanded.toggle()
-                    }
-                }) {
-                    HStack {
-                        Image(systemName: "display")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.blue)
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(display.name)
-                                .font(.system(size: 15, weight: .bold))
-                            if let current = display.currentMode {
-                                Text("\(current.resolutionString) @ \(String(format: "%.0f Hz", current.refreshRate))")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        
-                        Spacer()
-                        
-                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                            .foregroundColor(.secondary)
-                    }
+        VStack(alignment: .leading, spacing: 10) {
+            // Name row
+            HStack(spacing: 8) {
+                Image(systemName: "display")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(MonitorType.display.accentColor)
+                Text(display.name)
+                    .font(.system(size: 14, weight: .semibold))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                if display.isMain {
+                    Text("Main")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(MonitorType.display.accentColor)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(
+                            Capsule().fill(MonitorType.display.accentColor.opacity(0.18))
+                        )
                 }
-                .buttonStyle(.plain)
-                
-                if isExpanded {
-                    Divider()
-                        .background(Color.white.opacity(0.1))
-                    
-                    if let currentMode = display.currentMode {
-                        // Refresh Rate Selector
-                        HStack {
-                            Text("Refresh Rate")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            Picker("", selection: Binding(
-                                get: { round(currentMode.refreshRate) },
-                                set: { DisplayManager.shared.setRefreshRate(for: display, refreshRate: $0) }
-                            )) {
-                                ForEach(availableRefreshRates, id: \.self) { rate in
-                                    Text(String(format: "%.0f Hz", rate)).tag(rate)
-                                }
+                Spacer(minLength: 0)
+            }
+
+            if let currentMode = display.currentMode {
+                // Resolution
+                controlRow(label: "Resolution") {
+                    Picker("", selection: Binding(
+                        get: { resolutionKey(width: currentMode.width, height: currentMode.height, isHiDPI: currentMode.isHiDPI) },
+                        set: { key in
+                            if let mode = uniqueResolutions.first(where: {
+                                resolutionKey(width: $0.width, height: $0.height, isHiDPI: $0.isHiDPI) == key
+                            }) {
+                                DisplayManager.shared.setResolution(for: display, width: mode.width, height: mode.height, isHiDPI: mode.isHiDPI)
                             }
-                            .frame(width: 100)
-                            .labelsHidden()
                         }
-                        
-                        Text("Resolutions")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.secondary)
-                            .padding(.top, 4)
-                        
-                        // Resolution List
-                        let rowHeight: CGFloat = 34
-                        let listHeight = min(CGFloat(uniqueResolutions.count) * rowHeight, 250)
-                        
-                        ScrollView(showsIndicators: true) {
-                            VStack(spacing: 0) {
-                                ForEach(uniqueResolutions) { mode in
-                                    let isSelected = mode.width == currentMode.width && mode.height == currentMode.height && mode.isHiDPI == currentMode.isHiDPI
-                                    
-                                    Button(action: {
-                                        DisplayManager.shared.setResolution(for: display, width: mode.width, height: mode.height, isHiDPI: mode.isHiDPI)
-                                    }) {
-                                        HStack {
-                                            Text(mode.resolutionString)
-                                                .font(.system(size: 13, weight: isSelected ? .bold : .medium))
-                                                .foregroundColor(isSelected ? .white : .secondary)
-                                            
-                                            if mode.isHiDPI {
-                                                Image(systemName: "bolt.fill")
-                                                    .foregroundColor(isSelected ? .yellow : .yellow.opacity(0.6))
-                                                    .font(.system(size: 10))
-                                            }
-                                            
-                                            Spacer()
-                                            
-                                            if isSelected {
-                                                Image(systemName: "checkmark")
-                                                    .foregroundColor(.blue)
-                                                    .font(.system(size: 12, weight: .bold))
-                                            }
-                                        }
-                                        .padding(.vertical, 8)
-                                        .padding(.horizontal, 10)
-                                        .contentShape(Rectangle())
-                                        .background(isSelected ? Color.blue.opacity(0.2) : Color.clear)
-                                        .cornerRadius(6)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                            .padding(.vertical, 4)
+                    )) {
+                        ForEach(uniqueResolutions) { mode in
+                            resolutionLabel(mode)
+                                .tag(resolutionKey(width: mode.width, height: mode.height, isHiDPI: mode.isHiDPI))
                         }
-                        .frame(height: listHeight)
-                        .background(Color.black.opacity(0.2))
-                        .cornerRadius(8)
                     }
+                    .labelsHidden()
+                    .fixedSize()
+                }
+
+                // Refresh rate
+                controlRow(label: "Refresh Rate") {
+                    Picker("", selection: Binding(
+                        get: { round(currentMode.refreshRate) },
+                        set: { DisplayManager.shared.setRefreshRate(for: display, refreshRate: $0) }
+                    )) {
+                        ForEach(availableRefreshRates, id: \.self) { rate in
+                            Text(String(format: "%.0f Hz", rate)).tag(rate)
+                        }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
                 }
             }
-            .padding(12)
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+
+    /// A "label ............ control" row shared by both pickers.
+    private func controlRow<Control: View>(label: LocalizedStringKey, @ViewBuilder control: () -> Control) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.secondary)
+            Spacer()
+            control()
+        }
+    }
+
+    /// Resolution menu entry: "2560 x 1440" plus a bolt for HiDPI modes.
+    private func resolutionLabel(_ mode: DisplayModeInfo) -> Text {
+        if mode.isHiDPI {
+            return Text(mode.resolutionString + "  ") + Text(Image(systemName: "bolt.fill"))
+        }
+        return Text(mode.resolutionString)
     }
 }
