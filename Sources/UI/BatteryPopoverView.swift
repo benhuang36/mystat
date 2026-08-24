@@ -58,6 +58,20 @@ struct BatteryPopoverView: View {
                     }
                 }
 
+            // Power flow — where the watts are coming from and where they're going.
+            let flow = monitor.powerFlow
+            if flow.mode != .unavailable {
+                CustomDivider()
+
+                PopoverSection(spacing: 10) {
+                    CardSectionHeader(title: "Power Flow",
+                                      systemImage: "bolt.horizontal.fill",
+                                      color: .green)
+                    PowerFlowDiagram(flow: flow)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+
             // 24-hour history chart
             let history = historyManager.history
             if history.count > 1 {
@@ -370,5 +384,285 @@ struct BatteryPopoverView: View {
         case "Poor": return .red
         default: return .secondary
         }
+    }
+}
+
+// MARK: - Power Flow Sankey
+
+/// Fixed geometry for the Sankey diagram. The popover width is a constant
+/// (`PopoverStyle.width`) and `PopoverSection` insets are 16/side, so the box can be
+/// hard-coded and we skip a `GeometryReader` layout pass entirely.
+private enum Sankey {
+    static let boxWidth: CGFloat = 288
+    static let boxHeight: CGFloat = 104
+    /// Width of the icon + wattage column on each side.
+    static let nodeWidth: CGFloat = 60
+    static let gutter: CGFloat = 6
+    /// Horizontal span the ribbons occupy.
+    static var ribbonStart: CGFloat { nodeWidth + gutter }
+    static var ribbonEnd: CGFloat { boxWidth - nodeWidth - gutter }
+
+    static var midY: CGFloat { boxHeight / 2 }
+    /// Vertical centres when a side carries two nodes.
+    static let upperY: CGFloat = 24
+    static let lowerY: CGFloat = 80
+    /// Keeps two stacked ribbons from fusing into one block where they share a node.
+    static let stackGap: CGFloat = 4
+
+    /// Total vertical space the ribbon stack may occupy.
+    static let budget: CGFloat = 48
+    /// A 0.4 W trickle still has to be visible.
+    static let minThickness: CGFloat = 3
+
+    static var leftLabelX: CGFloat { nodeWidth / 2 }
+    static var rightLabelX: CGFloat { boxWidth - nodeWidth / 2 }
+
+    /// Ribbon thickness is proportional to watts up to a 20 W reference, and normalised
+    /// beyond that. So an idle 5 W draw reads as a thin trickle while a 45 W charge fills
+    /// the box, instead of every state looking identically fat.
+    static func thicknesses(_ watts: [Double]) -> [CGFloat] {
+        let total = watts.reduce(0, +)
+        guard total > 0 else { return watts.map { _ in minThickness } }
+        let scale: CGFloat = budget / CGFloat(max(total, 20))
+        var result: [CGFloat] = watts.map { max(minThickness, CGFloat($0) * scale) }
+
+        // The min-thickness floor can push the stack past the budget; give the overflow
+        // back proportionally from whatever slack the thicker ribbons have.
+        let overflow = result.reduce(0, +) - budget
+        guard overflow > 0 else { return result }
+        let slack = result.map { max(0, $0 - minThickness) }
+        let slackTotal = slack.reduce(0, +)
+        guard slackTotal > 0 else { return result }
+        for i in result.indices { result[i] -= overflow * slack[i] / slackTotal }
+        return result
+    }
+}
+
+/// A Sankey ribbon: a closed band between two vertical spans, not a stroked line.
+/// Stroking would tie thickness to `lineWidth`, which can't taper and won't animate.
+/// `animatableData` is what lets the band morph smoothly — a `Path` built inline in a
+/// view body does not interpolate.
+private struct RibbonShape: Shape {
+    var y0: CGFloat
+    var t0: CGFloat
+    var y1: CGFloat
+    var t1: CGFloat
+
+    var animatableData: AnimatablePair<AnimatablePair<CGFloat, CGFloat>,
+                                       AnimatablePair<CGFloat, CGFloat>> {
+        get { .init(.init(y0, t0), .init(y1, t1)) }
+        set {
+            y0 = newValue.first.first
+            t0 = newValue.first.second
+            y1 = newValue.second.first
+            t1 = newValue.second.second
+        }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let xStart = Sankey.ribbonStart
+        let xEnd = Sankey.ribbonEnd
+        // Horizontal tangents at both ends so the band meets each node column flat.
+        let control = (xEnd - xStart) * 0.5
+        let topStart = CGPoint(x: xStart, y: y0 - t0 / 2)
+        let topEnd = CGPoint(x: xEnd, y: y1 - t1 / 2)
+        let bottomEnd = CGPoint(x: xEnd, y: y1 + t1 / 2)
+        let bottomStart = CGPoint(x: xStart, y: y0 + t0 / 2)
+
+        var path = Path()
+        path.move(to: topStart)
+        path.addCurve(to: topEnd,
+                      control1: CGPoint(x: xStart + control, y: topStart.y),
+                      control2: CGPoint(x: xEnd - control, y: topEnd.y))
+        path.addLine(to: bottomEnd)
+        path.addCurve(to: bottomStart,
+                      control1: CGPoint(x: xEnd - control, y: bottomEnd.y),
+                      control2: CGPoint(x: xStart + control, y: bottomStart.y))
+        path.closeSubpath()
+        return path
+    }
+}
+
+private struct RibbonGeometry: Equatable {
+    var y0: CGFloat = Sankey.midY
+    var t0: CGFloat = Sankey.minThickness
+    var y1: CGFloat = Sankey.midY
+    var t1: CGFloat = Sankey.minThickness
+    var isActive = false
+}
+
+private enum PowerNodeKind { case adapter, batterySource, batterySink, mac }
+
+private struct PowerNodeLabel: Equatable, Identifiable {
+    var kind: PowerNodeKind
+    var watts: Double
+    var y: CGFloat
+    var id: Int {
+        switch kind {
+        case .adapter: return 0
+        case .batterySource, .batterySink: return 1
+        case .mac: return 2
+        }
+    }
+}
+
+/// Everything the diagram draws, derived purely from `PowerFlowStats`.
+private struct PowerFlowLayout: Equatable {
+    var adapterToMac = RibbonGeometry()
+    var adapterToBattery = RibbonGeometry()
+    var batteryToMac = RibbonGeometry()
+    var leftNodes: [PowerNodeLabel] = []
+    var rightNodes: [PowerNodeLabel] = []
+
+    static func make(from flow: PowerFlowStats) -> PowerFlowLayout {
+        var layout = PowerFlowLayout()
+        let mac = max(0, flow.systemWatts)
+
+        switch flow.mode {
+        case .unavailable:
+            return layout
+
+        case .battery:
+            let t = Sankey.thicknesses([mac])[0]
+            layout.batteryToMac = RibbonGeometry(y0: Sankey.midY, t0: t,
+                                                 y1: Sankey.midY, t1: t, isActive: true)
+            layout.leftNodes = [PowerNodeLabel(kind: .batterySource, watts: mac, y: Sankey.midY)]
+            layout.rightNodes = [PowerNodeLabel(kind: .mac, watts: mac, y: Sankey.midY)]
+
+        case .adapterOnly:
+            let t = Sankey.thicknesses([mac])[0]
+            layout.adapterToMac = RibbonGeometry(y0: Sankey.midY, t0: t,
+                                                 y1: Sankey.midY, t1: t, isActive: true)
+            layout.leftNodes = [PowerNodeLabel(kind: .adapter, watts: mac, y: Sankey.midY)]
+            layout.rightNodes = [PowerNodeLabel(kind: .mac, watts: mac, y: Sankey.midY)]
+
+        case .charging:
+            // Adapter fans out. Stack at the source in sink order so the ribbons don't cross.
+            let charge = flow.batteryChargeWatts
+            let t = Sankey.thicknesses([mac, charge])
+            var cursor = Sankey.midY - (t[0] + t[1] + Sankey.stackGap) / 2
+            let macSourceY = cursor + t[0] / 2
+            cursor += t[0] + Sankey.stackGap
+            let batterySourceY = cursor + t[1] / 2
+
+            layout.adapterToMac = RibbonGeometry(y0: macSourceY, t0: t[0],
+                                                 y1: Sankey.upperY, t1: t[0], isActive: true)
+            layout.adapterToBattery = RibbonGeometry(y0: batterySourceY, t0: t[1],
+                                                     y1: Sankey.lowerY, t1: t[1], isActive: true)
+            layout.leftNodes = [PowerNodeLabel(kind: .adapter, watts: mac + charge, y: Sankey.midY)]
+            layout.rightNodes = [
+                PowerNodeLabel(kind: .mac, watts: mac, y: Sankey.upperY),
+                PowerNodeLabel(kind: .batterySink, watts: charge, y: Sankey.lowerY)
+            ]
+
+        case .supplemented:
+            // Two sources merge; the sink side stacks instead.
+            let fromBattery = min(mac, flow.batteryDrawWatts)
+            let fromAdapter = max(0, mac - fromBattery)
+            let t = Sankey.thicknesses([fromAdapter, fromBattery])
+            var cursor = Sankey.midY - (t[0] + t[1] + Sankey.stackGap) / 2
+            let adapterSinkY = cursor + t[0] / 2
+            cursor += t[0] + Sankey.stackGap
+            let batterySinkY = cursor + t[1] / 2
+
+            layout.adapterToMac = RibbonGeometry(y0: Sankey.upperY, t0: t[0],
+                                                 y1: adapterSinkY, t1: t[0], isActive: true)
+            layout.batteryToMac = RibbonGeometry(y0: Sankey.lowerY, t0: t[1],
+                                                 y1: batterySinkY, t1: t[1], isActive: true)
+            layout.leftNodes = [
+                PowerNodeLabel(kind: .adapter, watts: fromAdapter, y: Sankey.upperY),
+                PowerNodeLabel(kind: .batterySource, watts: fromBattery, y: Sankey.lowerY)
+            ]
+            layout.rightNodes = [PowerNodeLabel(kind: .mac, watts: mac, y: Sankey.midY)]
+        }
+
+        return layout
+    }
+}
+
+/// AlDente-style power flow diagram: where the watts are coming from and where they go.
+struct PowerFlowDiagram: View {
+    let flow: PowerFlowStats
+
+    var body: some View {
+        let layout = PowerFlowLayout.make(from: flow)
+
+        ZStack(alignment: .topLeading) {
+            // Three fixed ribbon slots, always present. Keeping view identity stable lets
+            // SwiftUI interpolate between states instead of popping views in and out.
+            ribbon(layout.adapterToMac,
+                   colors: [.green.opacity(0.55), .green.opacity(0.28)])
+            ribbon(layout.adapterToBattery,
+                   colors: [.green.opacity(0.55), .mint.opacity(0.45)])
+            ribbon(layout.batteryToMac,
+                   colors: [.orange.opacity(0.55), .orange.opacity(0.28)])
+
+            ForEach(layout.leftNodes) { node in
+                nodeLabel(node).position(x: Sankey.leftLabelX, y: node.y)
+            }
+            ForEach(layout.rightNodes) { node in
+                nodeLabel(node).position(x: Sankey.rightLabelX, y: node.y)
+            }
+        }
+        .frame(width: Sankey.boxWidth, height: Sankey.boxHeight)
+        .animation(.easeInOut(duration: 0.45), value: layout)
+    }
+
+    private func ribbon(_ geometry: RibbonGeometry, colors: [Color]) -> some View {
+        let shape = RibbonShape(y0: geometry.y0, t0: geometry.t0, y1: geometry.y1, t1: geometry.t1)
+        return shape
+            .fill(LinearGradient(colors: colors, startPoint: .leading, endPoint: .trailing))
+            // Translucent fills wash out on light vibrancy over a bright wallpaper; the
+            // hairline keeps the band readable, same reasoning as CustomDivider.
+            .overlay(shape.stroke(Color(nsColor: .separatorColor).opacity(0.5), lineWidth: 0.5))
+            .opacity(geometry.isActive ? 1 : 0)
+    }
+
+    private func nodeLabel(_ node: PowerNodeLabel) -> some View {
+        VStack(spacing: 1) {
+            Image(systemName: symbol(for: node.kind))
+                .font(.system(size: 13))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundColor(tint(for: node.kind))
+            Text(Self.wattsLabel(node.watts))
+                .font(PopoverStyle.rowValueFont)
+                .monospacedDigit()
+            Text(LocalizedStringKey(name(for: node.kind)))
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        }
+        .frame(width: Sankey.nodeWidth)
+    }
+
+    private func symbol(for kind: PowerNodeKind) -> String {
+        switch kind {
+        case .adapter: return "powerplug.fill"
+        case .batterySource: return "battery.50"
+        case .batterySink: return "battery.100.bolt"
+        case .mac: return "laptopcomputer"
+        }
+    }
+
+    private func tint(for kind: PowerNodeKind) -> Color {
+        switch kind {
+        case .adapter: return .green
+        case .batterySource: return .orange
+        case .batterySink: return .mint
+        case .mac: return .secondary
+        }
+    }
+
+    private func name(for kind: PowerNodeKind) -> String {
+        switch kind {
+        case .adapter: return "Adapter"
+        case .batterySource, .batterySink: return "Battery"
+        case .mac: return "Mac"
+        }
+    }
+
+    /// Never render "0.0 W" — below the deadband it isn't a real reading.
+    static func wattsLabel(_ watts: Double) -> String {
+        guard watts >= PowerFlowStats.deadband else { return "—" }
+        return watts < 10 ? String(format: "%.1f W", watts) : String(format: "%.0f W", watts)
     }
 }

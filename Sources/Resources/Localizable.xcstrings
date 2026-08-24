@@ -120,6 +120,17 @@
         }
       }
     },
+    "Adapter": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "電源轉換器"
+          }
+        }
+      }
+    },
     "Add World Clock": {
       "localizations": {
         "zh-Hant": {
@@ -1165,6 +1176,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "電源轉換器（%lldW）"
+          }
+        }
+      }
+    },
+    "Power Flow": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "電力流向"
           }
         }
       }

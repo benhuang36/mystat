@@ -1,4 +1,5 @@
 import Foundation
+import IOKit
 import IOKit.ps
 
 // MARK: - Sleep Report
@@ -230,6 +231,9 @@ struct BatteryStats {
     var timeRemaining: Int // in minutes, -1 means calculating
     var health: String
     var adapterWatts: Int = 0 // rated wattage of the connected power adapter, 0 = unknown/none
+    /// IORegistry power-routing snapshot, refreshed on the same cadence as the rest of
+    /// these stats. `BatteryProvider.refreshedPowerFlow` overlays the live SMC reading.
+    var powerFlow = PowerFlowStats()
 
     var percentage: Double {
         return maxCapacity > 0 ? (capacity / maxCapacity) * 100.0 : 0
@@ -243,10 +247,149 @@ struct BatteryStats {
     static let empty = BatteryStats(isPresent: false, isCharging: false, capacity: 0, maxCapacity: 0, designCapacity: 0, cycleCount: 0, timeRemaining: 0, health: "Unknown")
 }
 
+// MARK: - Power Flow
+
+/// Which of the four power-routing situations the machine is in.
+/// Mirrors AlDente's Power Flow examples 1-4.
+enum PowerFlowMode {
+    case unavailable    // no usable telemetry
+    case battery        // unplugged: battery -> Mac
+    case adapterOnly    // plugged in, battery idle: adapter -> Mac
+    case charging       // plugged in: adapter -> Mac + battery
+    case supplemented   // adapter can't keep up: adapter + battery -> Mac
+}
+
+/// Instantaneous power routing, in watts.
+struct PowerFlowStats: Equatable {
+    var isValid = false
+    var adapterWatts: Double = 0   // what the adapter is actually delivering
+    var batteryWatts: Double = 0   // signed: positive = charging, negative = discharging
+    var systemWatts: Double = 0    // what the Mac itself is drawing
+    var adapterRatedWatts: Int = 0 // nameplate rating of the connected adapter, 0 = unknown
+    var externalConnected = false
+
+    /// Wattages below this are treated as zero, so a Mac sitting at 0.02 W of trickle
+    /// doesn't make the diagram flip modes every second.
+    static let deadband: Double = 0.15
+
+    var batteryChargeWatts: Double { max(0, batteryWatts) }
+    var batteryDrawWatts: Double { max(0, -batteryWatts) }
+
+    var mode: PowerFlowMode {
+        guard isValid else { return .unavailable }
+        guard externalConnected else { return .battery }
+        if adapterWatts > Self.deadband && batteryDrawWatts > Self.deadband { return .supplemented }
+        if batteryChargeWatts > Self.deadband { return .charging }
+        return .adapterOnly
+    }
+}
+
+// MARK: - SMC
+
+/// Minimal read-only AppleSMC client. Reads need no privileges (only writes do), so this
+/// stays entirely inside the app. Used for power telemetry, which SMC refreshes about once
+/// a second versus AppleSmartBattery's ~15 seconds.
+private final class SMCPowerReader {
+
+    private struct KeyData {
+        var key: UInt32 = 0
+        var vers: (UInt8, UInt8, UInt8, UInt8, UInt16) = (0, 0, 0, 0, 0)
+        var pLimitData: (UInt16, UInt16, UInt32, UInt32, UInt32) = (0, 0, 0, 0, 0)
+        var keyInfo: (dataSize: UInt32, dataType: UInt32, dataAttributes: UInt8) = (0, 0, 0)
+        var padding: UInt16 = 0
+        var result: UInt8 = 0
+        var status: UInt8 = 0
+        var data8: UInt8 = 0
+        var data32: UInt32 = 0
+        var bytes: (UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+                    UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+                    UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+                    UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8) =
+            (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    }
+
+    private static let kGetKeyInfo: UInt8 = 9
+    private static let kReadKey: UInt8 = 5
+    private static let typeFloat: UInt32 = 0x666C7420 // 'flt '
+
+    private var connection: io_connect_t = 0
+    private var openFailed = false
+    /// Cached dataType/dataSize per key; SMC key metadata never changes at runtime.
+    private var keyInfoCache: [UInt32: (type: UInt32, size: UInt32)] = [:]
+
+    deinit {
+        if connection != 0 { IOServiceClose(connection) }
+    }
+
+    private func connect() -> Bool {
+        if connection != 0 { return true }
+        if openFailed { return false }
+        let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSMC"))
+        guard service != 0 else { openFailed = true; return false }
+        let result = IOServiceOpen(service, mach_task_self_, 0, &connection)
+        IOObjectRelease(service)
+        if result != kIOReturnSuccess {
+            connection = 0
+            openFailed = true
+            return false
+        }
+        return true
+    }
+
+    private func call(_ input: inout KeyData) -> KeyData? {
+        var output = KeyData()
+        var outputSize = MemoryLayout<KeyData>.stride
+        let result = IOConnectCallStructMethod(connection, 2, &input, MemoryLayout<KeyData>.stride,
+                                              &output, &outputSize)
+        guard result == kIOReturnSuccess, output.result == 0 else { return nil }
+        return output
+    }
+
+    private static func fourCC(_ key: String) -> UInt32 {
+        var value: UInt32 = 0
+        for byte in key.utf8 { value = (value << 8) | UInt32(byte) }
+        return value
+    }
+
+    /// Reads a `flt ` key. Returns nil if the key is absent or isn't a float.
+    func readFloat(_ key: String) -> Double? {
+        guard connect() else { return nil }
+        let code = Self.fourCC(key)
+
+        let info: (type: UInt32, size: UInt32)
+        if let cached = keyInfoCache[code] {
+            info = cached
+        } else {
+            var request = KeyData()
+            request.key = code
+            request.data8 = Self.kGetKeyInfo
+            guard let response = call(&request) else { return nil }
+            info = (response.keyInfo.dataType, response.keyInfo.dataSize)
+            keyInfoCache[code] = info
+        }
+        guard info.type == Self.typeFloat, info.size == 4 else { return nil }
+
+        var request = KeyData()
+        request.key = code
+        request.keyInfo.dataSize = info.size
+        request.data8 = Self.kReadKey
+        guard let response = call(&request) else { return nil }
+
+        // SMC returns `flt ` little-endian.
+        let bits = withUnsafeBytes(of: response.bytes) { raw in
+            UInt32(raw[0]) | (UInt32(raw[1]) << 8) | (UInt32(raw[2]) << 16) | (UInt32(raw[3]) << 24)
+        }
+        let value = Double(Float(bitPattern: bits))
+        return value.isFinite ? value : nil
+    }
+}
+
 class BatteryProvider {
     
     private var cachedBatteryEntry: io_registry_entry_t = 0
     private var batteryCacheAge: Int = 0
+    private let smc = SMCPowerReader()
     
     deinit {
         if cachedBatteryEntry != 0 {
@@ -301,6 +444,10 @@ class BatteryProvider {
                         stats.adapterWatts = adapter["Watts"] as? Int ?? 0
                     }
 
+                    stats.powerFlow = Self.powerFlow(from: properties,
+                                                     externalConnected: stats.isCharging,
+                                                     adapterRatedWatts: stats.adapterWatts)
+
                     // Infer health
                     if stats.maxCapacity > 0, stats.designCapacity > 0 {
                         let healthRatio = stats.maxCapacity / stats.designCapacity
@@ -315,6 +462,88 @@ class BatteryProvider {
         }
         
         return stats
+    }
+
+    // MARK: - Power Flow
+
+    /// Overlays SMC's ~1 Hz system-load reading onto the IORegistry snapshot captured by
+    /// `getBatteryStats()`.
+    ///
+    /// Each leg comes from whichever source is actually good at it:
+    ///
+    /// - **System load** from SMC `PSTR`. AppleSmartBattery only republishes every ~15 s, so
+    ///   the one number that visibly moves gets the fast source.
+    /// - **Battery power** from `PowerTelemetryData`. It is exact and, unlike SMC, it
+    ///   conserves; battery charge rate genuinely changes slowly, so 15 s is no loss.
+    /// - **Adapter** is derived, so `adapter == system + battery` holds by construction and
+    ///   the ribbons always meet.
+    ///
+    /// Deliberately *not* derived from SMC `PDTR - PSTR`: measured on M1, `PDTR` and `PSTR`
+    /// update one generation apart, so with a full battery (true battery power 0) their
+    /// difference swings +-0.5 W typically and up to +-5.5 W on a load transient. That is
+    /// enough to flip the diagram between "charging" and "adapter underpowered" while
+    /// nothing is actually flowing.
+    func refreshedPowerFlow(_ snapshot: PowerFlowStats) -> PowerFlowStats {
+        var flow = snapshot
+        guard flow.isValid else { return flow }
+
+        // A running Mac never draws zero, so a non-positive reading is a bad sample rather
+        // than a measurement; keep the IORegistry value in that case.
+        if let systemLoad = smc.readFloat("PSTR"), systemLoad > PowerFlowStats.deadband {
+            flow.systemWatts = systemLoad
+        }
+
+        if flow.externalConnected {
+            flow.adapterWatts = max(0, flow.systemWatts + flow.batteryWatts)
+        } else {
+            // On battery there is no adapter leg, whatever the telemetry says.
+            flow.adapterWatts = 0
+            flow.batteryWatts = -flow.systemWatts
+        }
+        return flow
+    }
+
+    /// Reads PowerTelemetryData out of the property dictionary `getBatteryStats()` already
+    /// fetched, so this costs no extra IOKit round-trip.
+    private static func powerFlow(from properties: [String: Any],
+                                  externalConnected: Bool,
+                                  adapterRatedWatts: Int) -> PowerFlowStats {
+        var flow = PowerFlowStats()
+        flow.externalConnected = externalConnected
+        flow.adapterRatedWatts = adapterRatedWatts
+
+        guard let telemetry = properties["PowerTelemetryData"] as? [String: Any] else { return flow }
+        let adapterIn = signedMilliwatts(telemetry["SystemPowerIn"])
+        let systemLoad = signedMilliwatts(telemetry["SystemLoad"])
+        let batteryPower = signedMilliwatts(telemetry["BatteryPower"])
+        guard systemLoad != nil || batteryPower != nil else { return flow }
+
+        flow.adapterWatts = max(0, (adapterIn ?? 0) / 1000)
+        flow.systemWatts = max(0, (systemLoad ?? 0) / 1000)
+        flow.batteryWatts = (batteryPower ?? 0) / 1000
+
+        // No laptop moves 250 W across these rails; a garbage republish would otherwise blow
+        // the ribbon scale wide open.
+        guard flow.adapterWatts < 250, flow.systemWatts < 250, abs(flow.batteryWatts) < 250 else {
+            return PowerFlowStats()
+        }
+
+        if flow.systemWatts <= 0 {
+            flow.systemWatts = max(0, flow.adapterWatts - flow.batteryWatts)
+        }
+        flow.isValid = flow.systemWatts > 0
+        return flow
+    }
+
+    /// PowerTelemetryData wattages are signed but come back through CFNumber as unsigned,
+    /// either 32- or 64-bit wide depending on the macOS build. Real wattages never approach
+    /// 200 W, so unwrapping both widths is unambiguous.
+    private static func signedMilliwatts(_ value: Any?) -> Double? {
+        guard let number = value as? NSNumber else { return nil }
+        let unsigned = number.uint64Value
+        var signed = unsigned > UInt64(Int64.max) ? Int64(bitPattern: unsigned) : Int64(unsigned)
+        if signed > 0x7FFF_FFFF { signed -= 0x1_0000_0000 }
+        return Double(signed)
     }
 }
 

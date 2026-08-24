@@ -42,6 +42,10 @@ class SystemMonitor: ObservableObject {
     // New Advanced Modules
     @Published var gpuUsage: Double = 0.0
     @Published var batteryStats: BatteryStats = .empty
+    /// Live power routing for the Battery popover's flow diagram. Kept separate from
+    /// `batteryStats` because SMC serves this at 1 Hz while the battery poll stays on its
+    /// slower 3-tick cadence.
+    @Published var powerFlow = PowerFlowStats()
     @Published var sensorStats: SensorStats = SensorStats(cpuTemperature: 0, gpuTemperature: 0, batteryTemperature: 0, nandTemperature: 0, aneTemperature: 0, fanSpeed: 0)
     
     @Published var currentTime: Date = Date()
@@ -180,6 +184,14 @@ class SystemMonitor: ObservableObject {
         if tickCounter % 3 == 0 || !batteryStats.isPresent {
             batteryStats = batteryProvider.getBatteryStats()
             BatteryHistoryManager.shared.record(percentage: batteryStats.percentage, isCharging: batteryStats.isCharging)
+        }
+
+        // Power flow is one SMC read and is only ever shown inside a popover, so follow the
+        // same gating as GPU/sensors above rather than paying for it while idle.
+        if activePopoversCount > 0 {
+            powerFlow = batteryProvider.refreshedPowerFlow(batteryStats.powerFlow)
+        } else if powerFlow.isValid {
+            powerFlow = PowerFlowStats()
         }
         
         // If no UI popovers are active, we can skip fetching processes entirely to save massive CPU!
