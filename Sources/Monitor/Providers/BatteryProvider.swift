@@ -265,7 +265,6 @@ struct PowerFlowStats: Equatable {
     var adapterWatts: Double = 0   // what the adapter is actually delivering
     var batteryWatts: Double = 0   // signed: positive = charging, negative = discharging
     var systemWatts: Double = 0    // what the Mac itself is drawing
-    var adapterRatedWatts: Int = 0 // nameplate rating of the connected adapter, 0 = unknown
     var externalConnected = false
 
     /// Wattages below this are treated as zero, so a Mac sitting at 0.02 W of trickle
@@ -445,8 +444,7 @@ class BatteryProvider {
                     }
 
                     stats.powerFlow = Self.powerFlow(from: properties,
-                                                     externalConnected: stats.isCharging,
-                                                     adapterRatedWatts: stats.adapterWatts)
+                                                     externalConnected: stats.isCharging)
 
                     // Infer health
                     if stats.maxCapacity > 0, stats.designCapacity > 0 {
@@ -494,7 +492,23 @@ class BatteryProvider {
         }
 
         if flow.externalConnected {
-            flow.adapterWatts = max(0, flow.systemWatts + flow.batteryWatts)
+            // System load is live but the IORegistry legs are up to ~15s stale, so whichever
+            // leg we derive absorbs every load transient. Which one *should* absorb it
+            // depends on whether the adapter is maxed out, and a battery that is net
+            // discharging while plugged in is precisely the definition of maxed out.
+            let measuredAdapter = flow.adapterWatts // SystemPowerIn
+            if flow.batteryWatts < -PowerFlowStats.deadband && measuredAdapter > 0 {
+                // Saturated: the adapter is pinned at its limit and the battery takes the
+                // swings. Deriving the adapter here instead had it reading 15.1 W on a 10 W
+                // charger, and collapsing to 0 W (misreported as `adapterOnly`) whenever
+                // live load dipped below the stale discharge figure.
+                flow.adapterWatts = measuredAdapter
+                flow.batteryWatts = measuredAdapter - flow.systemWatts
+            } else {
+                // Headroom: the adapter ramps to follow the load and the charge rate holds
+                // steady, so derive the adapter and leave the battery alone.
+                flow.adapterWatts = max(0, flow.systemWatts + flow.batteryWatts)
+            }
         } else {
             // On battery there is no adapter leg, whatever the telemetry says.
             flow.adapterWatts = 0
@@ -506,11 +520,9 @@ class BatteryProvider {
     /// Reads PowerTelemetryData out of the property dictionary `getBatteryStats()` already
     /// fetched, so this costs no extra IOKit round-trip.
     private static func powerFlow(from properties: [String: Any],
-                                  externalConnected: Bool,
-                                  adapterRatedWatts: Int) -> PowerFlowStats {
+                                  externalConnected: Bool) -> PowerFlowStats {
         var flow = PowerFlowStats()
         flow.externalConnected = externalConnected
-        flow.adapterRatedWatts = adapterRatedWatts
 
         guard let telemetry = properties["PowerTelemetryData"] as? [String: Any] else { return flow }
         let adapterIn = signedMilliwatts(telemetry["SystemPowerIn"])
