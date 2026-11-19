@@ -14,6 +14,7 @@ extension MonitorType {
         case .battery: return .mint
         case .time: return .orange
         case .display: return .blue
+        case .stock: return .red
         }
     }
 }

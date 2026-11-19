@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0FEF84BF93D484558829A980 /* GPUProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 757E00EB083169046C6066E8 /* GPUProvider.swift */; };
+		B1A5AB9F2BD14DEAA8AA2CBB /* StockPopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89668A7D55F44198B2F76390 /* StockPopoverView.swift */; };
 		11E9C6B60C52FB0BA09D4F4E /* NetworkPopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E9DBF80337A43AA8140E51D /* NetworkPopoverView.swift */; };
 		1299CDDF91D66886BE44B7D7 /* TimeZoneCountries.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79436B6A89E5F194EEC901BA /* TimeZoneCountries.swift */; };
 		14A7E7CDD5D20487FBA7B1A8 /* SensorProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81ADCAADC1A573F8A2A57FB0 /* SensorProvider.swift */; };
@@ -19,6 +20,7 @@
 		49B253FB11AA2C36857DF465 /* DiskProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1EE2B2E20521C398CF77948 /* DiskProvider.swift */; };
 		4BE06B20DE67C959291FA4B5 /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67B6A5BEA9F78A90E8FEB18 /* GlassCard.swift */; };
 		4F05C84388644A628E900E8A /* NetworkProcessProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3BB02919C7D478B279DD874 /* NetworkProcessProvider.swift */; };
+		39CAE2B5A8A243B58AA39D3B /* StockQuoteManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A663772DE1E430DBE0C3256 /* StockQuoteManager.swift */; };
 		54D45F8DA5D13277D1A03801 /* WorldClockManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E5EF768814190DFC8D4B9DA /* WorldClockManager.swift */; };
 		56451D84838ED9DACFF27494 /* DisplayPopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64470618D3FDF494C755DA9C /* DisplayPopoverView.swift */; };
 		5CEAFD67176CAB7A84181B56 /* DiskPopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C48D9BC815187B4FBDB5884 /* DiskPopoverView.swift */; };
@@ -36,6 +38,7 @@
 		9677CCEDC3235BB1CE6DFDF9 /* SystemMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89F53E75A130450986B7BC4E /* SystemMonitor.swift */; };
 		9B5FC553593E05C4A83D601F /* MonitorType.swift in Sources */ = {isa = PBXBuildFile; fileRef = A13BDE30511B8DF447E4BC78 /* MonitorType.swift */; };
 		9F2F1D1DFCF177B0FF92591E /* StatusItemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8DC6B9B9286C261DB14D88C /* StatusItemController.swift */; };
+		FC1B37FC7F1D4581B11B719D /* StockSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 475B499B884B482BAC43B5E1 /* StockSettingsView.swift */; };
 		A2DD666B9CC41674D699BF20 /* TimeSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 717B21BC6E6A463CB8EF5C5D /* TimeSettingsView.swift */; };
 		A7C9B2F844EE92682E9E1FAB /* MyStatApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8B557D161A0D28EB77A2644 /* MyStatApp.swift */; };
 		C5886CD35A5373ADDB287E70 /* ProcessProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50B638F35E8C04064E9718D3 /* ProcessProvider.swift */; };
@@ -50,12 +53,14 @@
 		0432207ECADE342058471E78 /* MemoryProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryProvider.swift; sourceTree = "<group>"; };
 		0AC10781169BB23A8DC8C737 /* MyStat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyStat.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1ADCBEFB3195D9B406AD9EF6 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		0A663772DE1E430DBE0C3256 /* StockQuoteManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockQuoteManager.swift; sourceTree = "<group>"; };
 		2E5EF768814190DFC8D4B9DA /* WorldClockManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldClockManager.swift; sourceTree = "<group>"; };
 		2EB689C2F265581E771D63E1 /* ClassicDisplayMenuController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassicDisplayMenuController.swift; sourceTree = "<group>"; };
 		330360D7BC026626EB9189D6 /* TimePopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimePopoverView.swift; sourceTree = "<group>"; };
 		50B638F35E8C04064E9718D3 /* ProcessProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessProvider.swift; sourceTree = "<group>"; };
 		5B9414D2AF1B2E427BF802FC /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		64470618D3FDF494C755DA9C /* DisplayPopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayPopoverView.swift; sourceTree = "<group>"; };
+		475B499B884B482BAC43B5E1 /* StockSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockSettingsView.swift; sourceTree = "<group>"; };
 		717B21BC6E6A463CB8EF5C5D /* TimeSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeSettingsView.swift; sourceTree = "<group>"; };
 		757E00EB083169046C6066E8 /* GPUProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPUProvider.swift; sourceTree = "<group>"; };
 		78A3897C5B6B8225841E8253 /* CPUPopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CPUPopoverView.swift; sourceTree = "<group>"; };
@@ -68,6 +73,7 @@
 		8C0B23CA218B443AA9EE027D /* CPUProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CPUProvider.swift; sourceTree = "<group>"; };
 		8FC50BB27CD8E64F307D145F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9C48D9BC815187B4FBDB5884 /* DiskPopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskPopoverView.swift; sourceTree = "<group>"; };
+		89668A7D55F44198B2F76390 /* StockPopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockPopoverView.swift; sourceTree = "<group>"; };
 		9E9DBF80337A43AA8140E51D /* NetworkPopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkPopoverView.swift; sourceTree = "<group>"; };
 		A13BDE30511B8DF447E4BC78 /* MonitorType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorType.swift; sourceTree = "<group>"; };
 		A3BAB99D63AAFB28428342C8 /* CalendarEventManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarEventManager.swift; sourceTree = "<group>"; };
@@ -96,6 +102,7 @@
 				89F53E75A130450986B7BC4E /* SystemMonitor.swift */,
 				CBC84CDF7EDF0B8E46E805B3 /* TimeFormatToken.swift */,
 				79436B6A89E5F194EEC901BA /* TimeZoneCountries.swift */,
+				0A663772DE1E430DBE0C3256 /* StockQuoteManager.swift */,
 				2E5EF768814190DFC8D4B9DA /* WorldClockManager.swift */,
 				F0143B874F2B15DA3654574D /* Providers */,
 			);
@@ -155,9 +162,11 @@
 				9C48D9BC815187B4FBDB5884 /* DiskPopoverView.swift */,
 				B67B6A5BEA9F78A90E8FEB18 /* GlassCard.swift */,
 				8994F097DB122B9B63EBB1BB /* MemoryPopoverView.swift */,
+				89668A7D55F44198B2F76390 /* StockPopoverView.swift */,
 				9E9DBF80337A43AA8140E51D /* NetworkPopoverView.swift */,
 				85E2DCBFAF924657700D50FE /* SettingsView.swift */,
 				330360D7BC026626EB9189D6 /* TimePopoverView.swift */,
+				475B499B884B482BAC43B5E1 /* StockSettingsView.swift */,
 				717B21BC6E6A463CB8EF5C5D /* TimeSettingsView.swift */,
 				AD1BC8629948D7062776147B /* VisualEffectView.swift */,
 			);
@@ -270,6 +279,7 @@
 				7DB7786BE7B875E701D4C201 /* MenuBarManager.swift in Sources */,
 				9B5FC553593E05C4A83D601F /* MonitorType.swift in Sources */,
 				A7C9B2F844EE92682E9E1FAB /* MyStatApp.swift in Sources */,
+				B1A5AB9F2BD14DEAA8AA2CBB /* StockPopoverView.swift in Sources */,
 				11E9C6B60C52FB0BA09D4F4E /* NetworkPopoverView.swift in Sources */,
 				4F05C84388644A628E900E8A /* NetworkProcessProvider.swift in Sources */,
 				D0F075952E890BAEC961E35D /* NetworkProvider.swift in Sources */,
@@ -280,9 +290,11 @@
 				9677CCEDC3235BB1CE6DFDF9 /* SystemMonitor.swift in Sources */,
 				397271726C89F53EA0B07DD3 /* TimeFormatToken.swift in Sources */,
 				6B1030DAD1D3880234F4EEEA /* TimePopoverView.swift in Sources */,
+				FC1B37FC7F1D4581B11B719D /* StockSettingsView.swift in Sources */,
 				A2DD666B9CC41674D699BF20 /* TimeSettingsView.swift in Sources */,
 				1299CDDF91D66886BE44B7D7 /* TimeZoneCountries.swift in Sources */,
 				F305441A6FE005C9D1DAE933 /* VisualEffectView.swift in Sources */,
+				39CAE2B5A8A243B58AA39D3B /* StockQuoteManager.swift in Sources */,
 				54D45F8DA5D13277D1A03801 /* WorldClockManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -299,7 +311,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 0.6.1;
+				MARKETING_VERSION = 0.7.0;
 				CURRENT_PROJECT_VERSION = 2;
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "MyStat needs access to your calendar to display upcoming events.";
@@ -443,7 +455,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 0.6.1;
+				MARKETING_VERSION = 0.7.0;
 				CURRENT_PROJECT_VERSION = 2;
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "MyStat needs access to your calendar to display upcoming events.";

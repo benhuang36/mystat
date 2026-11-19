@@ -55,6 +55,16 @@
       }
     },
     "%@°C": {},
+    "%ds": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d 秒"
+          }
+        }
+      }
+    },
     "%ds ago": {
       "localizations": {
         "zh-Hant": {
@@ -131,6 +141,16 @@
         }
       }
     },
+    "Add": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新增"
+          }
+        }
+      }
+    },
     "Add World Clock": {
       "localizations": {
         "zh-Hant": {
@@ -147,6 +167,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "全天"
+          }
+        }
+      }
+    },
+    "Already in the watchlist.": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已經在觀察清單中。"
           }
         }
       }
@@ -309,6 +339,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "容量條"
+          }
+        }
+      }
+    },
+    "Change format": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "漲跌格式"
           }
         }
       }
@@ -755,12 +795,32 @@
         }
       }
     },
+    "Green Up / Red Down": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "漲綠跌紅（歐美慣例）"
+          }
+        }
+      }
+    },
     "Health": {
       "localizations": {
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
             "value": "健康度"
+          }
+        }
+      }
+    },
+    "High": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最高"
           }
         }
       }
@@ -856,6 +916,16 @@
         }
       }
     },
+    "Last Match": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "撮合時間"
+          }
+        }
+      }
+    },
     "Launch MyStat at Login": {
       "extractionState": "stale",
       "localizations": {
@@ -873,6 +943,67 @@
           "stringUnit": {
             "state": "translated",
             "value": "版面"
+          }
+        }
+      }
+    },
+    "Limit Down": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跌停"
+          }
+        }
+      }
+    },
+    "Limit Up": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "漲停"
+          }
+        }
+      }
+    },
+    "Listed and OTC codes are both accepted; the market is detected automatically.": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上市與上櫃代號皆可，系統會自動判別市場。"
+          }
+        }
+      }
+    },
+    "Live": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "盤中"
+          }
+        }
+      }
+    },
+    "Live Preview": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "即時預覽"
+          }
+        }
+      }
+    },
+    "Low": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最低"
           }
         }
       }
@@ -897,6 +1028,16 @@
         }
       }
     },
+    "Market Closed": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已收盤"
+          }
+        }
+      }
+    },
     "Memory": {
       "extractionState": "stale",
       "localizations": {
@@ -904,6 +1045,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "記憶體"
+          }
+        }
+      }
+    },
+    "Menu Bar": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選單列"
           }
         }
       }
@@ -1017,12 +1168,42 @@
         }
       }
     },
+    "No Color": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不上色"
+          }
+        }
+      }
+    },
     "No Displays Found": {
       "localizations": {
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
             "value": "找不到顯示器"
+          }
+        }
+      }
+    },
+    "No Symbol": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未選標的"
+          }
+        }
+      }
+    },
+    "No Trade": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無成交"
           }
         }
       }
@@ -1037,12 +1218,42 @@
         }
       }
     },
+    "No quote data returned": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "沒有回傳報價資料"
+          }
+        }
+      }
+    },
     "No sensor data available": {
       "localizations": {
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
             "value": "沒有可用的感測器資料"
+          }
+        }
+      }
+    },
+    "No such stock code.": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "找不到這個股票代號。"
+          }
+        }
+      }
+    },
+    "No symbols in the watchlist yet. Add one in Settings.": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "觀察清單還是空的，請到設定新增。"
           }
         }
       }
@@ -1077,12 +1288,32 @@
         }
       }
     },
+    "Open": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開盤"
+          }
+        }
+      }
+    },
     "Orange": {
       "localizations": {
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
             "value": "橙色"
+          }
+        }
+      }
+    },
+    "Percent": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "百分比"
           }
         }
       }
@@ -1123,6 +1354,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "粉紅色"
+          }
+        }
+      }
+    },
+    "Points": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "點數"
+          }
+        }
+      }
+    },
+    "Points + Percent": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "點數＋百分比"
           }
         }
       }
@@ -1201,6 +1452,16 @@
         }
       }
     },
+    "Previous Close": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "昨收"
+          }
+        }
+      }
+    },
     "Processes": {
       "localizations": {
         "zh-Hant": {
@@ -1251,6 +1512,16 @@
         }
       }
     },
+    "Quotes are only fetched during Taiwan market hours (Mon–Fri 09:00–13:30). Outside them the last close is shown.": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "僅於台股交易時段抓取報價（週一至週五 09:00–13:30），其餘時間顯示最後收盤價。"
+          }
+        }
+      }
+    },
     "Read": {
       "localizations": {
         "zh-Hant": {
@@ -1281,12 +1552,32 @@
         }
       }
     },
+    "Red Up / Green Down": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "漲紅跌綠（台股慣例）"
+          }
+        }
+      }
+    },
     "Refresh Rate": {
       "localizations": {
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
             "value": "更新率"
+          }
+        }
+      }
+    },
+    "Refresh every": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新頻率"
           }
         }
       }
@@ -1419,12 +1710,42 @@
         }
       }
     },
+    "Show change": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "顯示漲跌"
+          }
+        }
+      }
+    },
     "Show in Menu Bar": {
       "localizations": {
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
             "value": "顯示於選單列"
+          }
+        }
+      }
+    },
+    "Show name": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "顯示名稱"
+          }
+        }
+      }
+    },
+    "Show price": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "顯示價格"
           }
         }
       }
@@ -1530,6 +1851,26 @@
         }
       }
     },
+    "Stock": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "台股"
+          }
+        }
+      }
+    },
+    "Stock code (e.g. 2330)": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "股票代號（例如 2330）"
+          }
+        }
+      }
+    },
     "Style": {
       "extractionState": "stale",
       "localizations": {
@@ -1579,6 +1920,37 @@
           "stringUnit": {
             "state": "translated",
             "value": "系統格式"
+          }
+        }
+      }
+    },
+    "TAIEX": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加權指數"
+          }
+        }
+      }
+    },
+    "TPEx Index": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "櫃買指數"
+          }
+        }
+      }
+    },
+    "TWSE": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "證交所"
           }
         }
       }
@@ -1675,6 +2047,36 @@
         }
       }
     },
+    "Up / down colors": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "漲跌顏色"
+          }
+        }
+      }
+    },
+    "Updated %@": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新於 %@"
+          }
+        }
+      }
+    },
+    "Updates": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新"
+          }
+        }
+      }
+    },
     "Upload": {
       "extractionState": "stale",
       "localizations": {
@@ -1718,12 +2120,52 @@
         }
       }
     },
+    "Volume (lots)": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "成交量（張）"
+          }
+        }
+      }
+    },
+    "Waiting for quote…": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等待報價中…"
+          }
+        }
+      }
+    },
     "Wake-ups": {
       "localizations": {
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
             "value": "喚醒次數"
+          }
+        }
+      }
+    },
+    "Watchlist": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "觀察清單"
+          }
+        }
+      }
+    },
+    "Watchlist (Select the one to show in the menu bar)": {
+      "localizations": {
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "觀察清單（選擇要顯示在選單列的標的）"
           }
         }
       }

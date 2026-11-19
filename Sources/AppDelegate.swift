@@ -15,7 +15,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let defaultPrefs: [String: Any] = [
             "showCPU": true,
             "showMemory": true,
-            "showDisk": false
+            "showDisk": false,
+            // Stock is the only monitor that reaches the network, so it stays
+            // opt-in; these are the shape it takes once switched on.
+            "showStock": false,
+            "stockShowLabel": true,
+            "stockShowValue": true,
+            "stockShowChange": true,
+            "stockRefreshInterval": 10.0
         ]
         UserDefaults.standard.register(defaults: defaultPrefs)
         

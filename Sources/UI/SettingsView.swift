@@ -25,7 +25,7 @@ enum DisplayStyle: String, CaseIterable {
         case .network: return [.icon, .text, .history, .barChart, .pieChart, .gauge]
         case .battery: return [.icon, .text, .capacityBar, .gauge, .pieChart, .barChart]
         case .display: return [.icon, .text]
-        case .time: return []
+        case .time, .stock: return []
         }
     }
 
@@ -142,6 +142,8 @@ struct SettingsView: View {
                 case .monitor(let type):
                     if type == .time {
                         TimeSettingsView()
+                    } else if type == .stock {
+                        StockSettingsView()
                     } else {
                         DetailView(for: type)
                     }
@@ -164,6 +166,7 @@ struct SettingsView: View {
         case .battery: return .mint
         case .time: return .orange
         case .display: return .blue
+        case .stock: return .red
         }
     }
 }

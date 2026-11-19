@@ -76,6 +76,11 @@ class SystemMonitor: ObservableObject {
         }
     }
     
+    /// Which popovers are open right now, for consumers that should only work
+    /// for their own popover (e.g. Stock must not hit the network because the
+    /// CPU popover is open). Maintained alongside `activePopoversCount`.
+    var openPopoverTypes = Set<MonitorType>()
+
     private init() {
         startMonitoring()
     }

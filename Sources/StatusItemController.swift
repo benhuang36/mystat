@@ -94,6 +94,7 @@ class MonitorPopoverPresenter {
         case .battery: return AnyView(RootEnvironmentView { BatteryPopoverView() })
         case .time: return AnyView(RootEnvironmentView { TimePopoverView() })
         case .display: return AnyView(RootEnvironmentView { DisplayPopoverView() })
+        case .stock: return AnyView(RootEnvironmentView { StockPopoverView() })
         }
     }
 
@@ -113,6 +114,7 @@ class MonitorPopoverPresenter {
         // Count every open (close decrements every close); the panel itself
         // is created once and kept alive for reuse, so this must NOT be tied to creation.
         SystemMonitor.shared.activePopoversCount += 1
+        SystemMonitor.shared.openPopoverTypes.insert(type)
         anchorButton = anchor
 
         if panel == nil {
@@ -188,6 +190,7 @@ class MonitorPopoverPresenter {
 
         if !isFadingOut {
             isFadingOut = true
+            let type = self.type
             NSAnimationContext.runAnimationGroup({ context in
                 context.duration = 0.2
                 context.allowsImplicitAnimation = true
@@ -201,6 +204,7 @@ class MonitorPopoverPresenter {
                 self?.hostingController?.rootView = AnyView(EmptyView())
                 self?.isFadingOut = false
                 SystemMonitor.shared.activePopoversCount = max(0, SystemMonitor.shared.activePopoversCount - 1)
+                SystemMonitor.shared.openPopoverTypes.remove(type)
                 self?.removeEventMonitors()
             })
         }
@@ -303,6 +307,17 @@ enum MenuBarItemRenderer {
             return sig
         }
 
+        // Same deal for Stock: it draws straight to the button title, so the
+        // rendered string is the signature. The tint has to ride along too —
+        // crossing the previous close flips the color without changing a digit.
+        if type == .stock {
+            let rendered = StockQuoteManager.shared.menuBarText()
+            sig.style = "Stock"
+            sig.text = rendered.text
+            sig.options.append(rendered.color?.description ?? "none")
+            return sig
+        }
+
         let style = defaults.string(forKey: "\(key)DisplayStyle") ?? DisplayStyle.icon.rawValue
         sig.style = style
 
@@ -329,7 +344,7 @@ enum MenuBarItemRenderer {
             case .disk: sig.values.append(Int((monitor.diskUsageRatio * 100).rounded()))
             case .network: sig.text = networkSpeedText()
             case .display: sig.text = displayResolutionText()
-            case .battery, .time: break
+            case .battery, .time, .stock: break
             }
             return sig
         }
@@ -361,7 +376,7 @@ enum MenuBarItemRenderer {
             case .network:
                 sig.series.append(quantized(monitor.networkDownloadHistory))
                 sig.series.append(quantized(monitor.networkUploadHistory))
-            case .battery, .time, .display: break
+            case .battery, .time, .display, .stock: break
             }
             return sig
         }
@@ -374,7 +389,7 @@ enum MenuBarItemRenderer {
         case .network:
             sig.values.append(Int(min(100, (monitor.networkDownloadSpeed / 1024 / 10000.0) * 100.0).rounded()))
             sig.values.append(Int(min(100, (monitor.networkUploadSpeed / 1024 / 10000.0) * 100.0).rounded()))
-        case .battery, .time, .display: break
+        case .battery, .time, .display, .stock: break
         }
         return sig
     }
@@ -529,7 +544,7 @@ enum MenuBarItemRenderer {
             } else {
                 color = .controlTextColor
             }
-        case .time, .display:
+        case .time, .display, .stock:
             return symbolImage(for: type)
         }
 
@@ -712,6 +727,11 @@ class StatusItemController: NSObject {
                     self?.setupTimeTimer() // Re-evaluate if seconds were toggled
                 }
                 .store(in: &cancellables)
+        case .stock:
+            StockQuoteManager.shared.$quotes
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] _ in self?.updateButtonUI() }
+                .store(in: &cancellables)
         case .display:
             DisplayManager.shared.$displays
                 .receive(on: DispatchQueue.main)
@@ -809,6 +829,17 @@ class StatusItemController: NSObject {
             return
         }
 
+        // Stock needs a *colored* run (red/green by convention), which a plain
+        // `title` cannot express, so it is the one monitor drawn as an
+        // attributed title. Monospaced digits keep the item from twitching as
+        // the price gains or loses a digit.
+        if type == .stock {
+            button.image = nil
+            let title = stockAttributedTitle(signature.text, button: button)
+                button.attributedTitle = title
+            return
+        }
+
         let styleRaw = UserDefaults.standard.string(forKey: "\(type.rawValue.lowercased())DisplayStyle") ?? "Icon Only"
 
         if styleRaw == "Icon Only" {
@@ -835,6 +866,8 @@ class StatusItemController: NSObject {
                 break // Handled above
             case .display:
                 button.title = MenuBarItemRenderer.displayResolutionText()
+            case .stock:
+                break // Handled above
             }
         } else {
             // Graphical Modes
@@ -842,6 +875,20 @@ class StatusItemController: NSObject {
             button.title = ""
             button.image = MenuBarItemRenderer.graphicalImage(for: type, styleRaw: styleRaw)
         }
+    }
+
+    /// Matches the menu bar's own metrics but with tabular figures.
+    private func stockAttributedTitle(_ text: String, button: NSStatusBarButton) -> NSAttributedString {
+        let size = button.font?.pointSize ?? NSFont.systemFontSize
+        var attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: size, weight: .regular)
+        ]
+        if let color = StockQuoteManager.shared.menuBarText().color {
+            attributes[.foregroundColor] = color
+        } else {
+            attributes[.foregroundColor] = NSColor.controlTextColor
+        }
+        return NSAttributedString(string: text, attributes: attributes)
     }
 
     func setVisible(_ visible: Bool) {

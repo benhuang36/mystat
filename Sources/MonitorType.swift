@@ -8,6 +8,7 @@ enum MonitorType: String, CaseIterable {
     case battery = "Battery"
     case time = "Time"
     case display = "Display"
+    case stock = "Stock"
     
     var sfSymbolName: String {
         switch self {
@@ -18,6 +19,7 @@ enum MonitorType: String, CaseIterable {
         case .battery: return "battery.100"
         case .time: return "clock"
         case .display: return "display"
+        case .stock: return "chart.line.uptrend.xyaxis"
         }
     }
 }
