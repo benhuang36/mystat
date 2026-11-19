@@ -2,8 +2,6 @@ import SwiftUI
 
 struct TimeSettingsView: View {
     @ObservedObject var formatHelper = TimeFormatHelper.shared
-    @State private var previewDate = Date()
-    @State private var timer: Timer?
     @State private var draggedIndex: Int?
     
     // Grouping tokens for the palette
@@ -38,9 +36,14 @@ struct TimeSettingsView: View {
                     .foregroundColor(.secondary)
                 
                 HStack {
-                    Text(formatHelper.generateTimeString(date: previewDate))
-                        .font(.system(size: 24, weight: .medium, design: .default))
-                        .padding()
+                    // Only this Text ticks. Driving the preview from a page-level
+                    // Timer re-rendered the whole settings page (world-clock
+                    // TextFields included) every second.
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        Text(formatHelper.generateTimeString(date: context.date))
+                            .font(.system(size: 24, weight: .medium, design: .default))
+                            .padding()
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color(NSColor.controlBackgroundColor))
@@ -197,15 +200,6 @@ struct TimeSettingsView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color(NSColor.windowBackgroundColor))
-        .onAppear {
-            timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-                previewDate = Date()
-            }
-        }
-        .onDisappear {
-            timer?.invalidate()
-            timer = nil
-        }
     }
 }
 

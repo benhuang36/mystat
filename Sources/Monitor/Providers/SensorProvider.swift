@@ -75,6 +75,9 @@ class SensorProvider {
                         let name = Unmanaged<CFString>.fromOpaque(Unmanaged.passUnretained(nameRef as AnyObject).toOpaque()).takeUnretainedValue() as String
                         
                         if let event = IOHIDServiceClientCopyEvent(service, kIOHIDEventTypeTemperature, 0, 0) {
+                            // Copy rule: we own the event, and as an OpaquePointer ARC
+                            // won't release it (leaked ~0.5 MB/min with a popover open).
+                            defer { Unmanaged<AnyObject>.fromOpaque(UnsafeRawPointer(event)).release() }
                             let temp = IOHIDEventGetFloatValue(event, Int32(kIOHIDEventTypeTemperature << 16))
                             if temp > 0 && temp < 150 {
                                 let lowerName = name.lowercased()

@@ -1,7 +1,7 @@
 import Cocoa
 import SwiftUI
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     static var shared: AppDelegate!
     var settingsWindow: NSWindow?
     
@@ -26,6 +26,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         _ = MenuBarManager.shared
     }
     
+    /// The window is kept for reuse (frame, position), but closing it does not
+    /// fire SwiftUI's onDisappear, so a live tree would keep observing and
+    /// re-rendering off-screen. Swap in an empty view, as popovers do on close.
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, window === settingsWindow else { return }
+        let frame = window.frame
+        window.contentView = NSView()
+        window.setFrame(frame, display: false)
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return false
     }
@@ -54,8 +64,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             window.minSize = NSSize(width: 850, height: 600)
             window.center()
             window.isReleasedWhenClosed = false
-            window.contentView = NSHostingView(rootView: RootEnvironmentView { SettingsView() })
+            window.delegate = self
             settingsWindow = window
+        }
+        // (Re)attach the SwiftUI tree on every open; windowWillClose drops it.
+        if let window = settingsWindow, !(window.contentView is NSHostingView<RootEnvironmentView<SettingsView>>) {
+            window.contentView = NSHostingView(rootView: RootEnvironmentView { SettingsView() })
         }
         settingsWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
